@@ -1,0 +1,149 @@
+/* Plain CSS for the whole dashboard. Light and dark follow the system setting. */
+
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #1c1f24;
+  --muted: #5b6370;
+  --border: #dde1e6;
+  --accent: #2459d6;
+  --good: #1e7d3a;
+  --bad: #b3261e;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171b;
+    --panel: #1e2126;
+    --text: #e8eaed;
+    --muted: #a0a7b2;
+    --border: #33373e;
+    --accent: #7aa2ff;
+    --good: #5cc98a;
+    --bad: #ff8a80;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topbar h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+nav {
+  display: flex;
+  gap: 4px;
+}
+
+nav a {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+nav a.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.ok {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.off {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.card small {
+  color: var(--muted);
+}
+
+input,
+button {
+  font: inherit;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.error {
+  color: var(--bad);
+}

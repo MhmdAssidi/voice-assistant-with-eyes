@@ -1,0 +1,40 @@
+# Infrastructure for local development (owner: Student A after S0).
+# Start:  docker compose up -d      Stop:  docker compose down
+# Reset the database completely:  docker compose down -v
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: va-postgres
+    environment:
+      POSTGRES_USER: va
+      POSTGRES_PASSWORD: va
+      POSTGRES_DB: va
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # SQL files here run once, on the very first start of an empty database
+      - ./backend/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U va -d va"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: va-mediamtx
+    ports:
+      - "8554:8554"       # RTSP (Python ingest worker reads here)
+      - "8889:8889"       # WebRTC WHIP/WHEP (phone publishes, dashboard plays)
+      - "8888:8888"       # HLS (fallback)
+      - "8189:8189/udp"   # WebRTC media
+    # Student B adds the custom config in B1:
+    # volumes:
+    #   - ./infra/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -1,0 +1,34 @@
+# Secrets and local settings
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Runtime data and model weights (never commit)
+data/
+*.pt
+*.onnx
+*.bin
+*.safetensors
+
+# Node / dashboard
+node_modules/
+dist/
+build/
+
+# Flutter / mobile
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,67 @@
+# Continuous integration (owner: Student A after S0).
+# Runs on every pull request and every push to main. A PR can only be merged when it is green.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Student A uses 3.11, Student B uses 3.14: the code must work on both.
+        python: ["3.11", "3.14"]
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Lint
+        run: ruff check .
+      - name: Tests (heavy-model tests marked "slow" are skipped)
+        run: pytest -m "not slow"
+
+  dashboard:
+    name: Dashboard build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  mobile:
+    name: Mobile analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The steps below are skipped until Student B adds the Flutter app in B0
+      - uses: subosito/flutter-action@v2
+        if: ${{ hashFiles('mobile/pubspec.yaml') != '' }}
+        with:
+          channel: stable
+      - if: ${{ hashFiles('mobile/pubspec.yaml') != '' }}
+        working-directory: mobile
+        run: flutter pub get
+      - if: ${{ hashFiles('mobile/pubspec.yaml') != '' }}
+        working-directory: mobile
+        run: flutter analyze
