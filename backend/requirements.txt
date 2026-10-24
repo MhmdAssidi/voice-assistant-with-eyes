@@ -1,0 +1,19 @@
+# Shared backend dependencies.
+# Rule: add lines through a PR; never remove a line the other student added.
+# Versions use ">=" so the same file works on Python 3.11 (Student A) and 3.14 (Student B).
+
+# --- Web API (shared) ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.8
+pydantic-settings>=2.4
+python-multipart>=0.0.9   # needed for multipart uploads (POST /api/ask)
+httpx>=0.27               # HTTP client (worker -> API events) and FastAPI TestClient
+
+# --- Dev tools (shared) ---
+pytest>=8.0
+ruff>=0.6
+
+# --- Student A adds below (database, OpenCV, OCR, YOLO, CLIP) ---
+
+# --- Student B adds below (faster-whisper, google-genai) ---
