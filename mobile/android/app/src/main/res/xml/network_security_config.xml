@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Our server is a laptop on the local Wi-Fi or phone hotspot, reached by its LAN IP
+  (for example http://192.168.1.20:8000 and ws://192.168.1.20:8000/ws/events).
+  It has no HTTPS certificate, and Android blocks plain HTTP by default since Android 9.
+  The laptop IP changes between networks (home, university, demo room) and is typed in the
+  app's settings screen, and Android cannot whitelist IP ranges here, so cleartext is allowed
+  for all hosts. The app only ever talks to the server address the user configured.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>
