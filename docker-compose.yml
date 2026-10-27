@@ -31,9 +31,12 @@ services:
       - "8889:8889"       # WebRTC WHIP/WHEP (phone publishes, dashboard plays)
       - "8888:8888"       # HLS (fallback)
       - "8189:8189/udp"   # WebRTC media
-    # Student B adds the custom config in B1:
-    # volumes:
-    #   - ./infra/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    # Custom config (Student B, B1)
+    volumes:
+      - ./infra/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    # The laptop's LAN IP from .env, so the phone and browsers can reach WebRTC (B1)
+    environment:
+      MTX_WEBRTCADDITIONALHOSTS: ${LAN_IP:-}
     restart: unless-stopped
 
 volumes:
