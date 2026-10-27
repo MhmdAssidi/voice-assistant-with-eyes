@@ -1,0 +1,60 @@
+# MediaMTX streaming server config (owner: Student B, task B1).
+# Tested with bluenviron/mediamtx v1.21.3. Any setting not written here keeps MediaMTX's default.
+#
+# Flow:
+#   phone  --WebRTC/WHIP-->  http://LAPTOP_IP:8889/live/whip   (publish, video only)
+#   worker <--RTSP--         rtsp://localhost:8554/live         (Student A's ingest worker)
+#   browser <--WebRTC/WHEP-- http://LAPTOP_IP:8889/live/whep   (dashboard Live page)
+#
+# The laptop's LAN IP is NOT written here: it changes between networks, so it lives in .env
+# (LAN_IP) and docker-compose.yml passes it in as MTX_WEBRTCADDITIONALHOSTS.
+#
+# Security note: there is no login on purpose. Everything runs on a private Wi-Fi/hotspot for
+# a demo, and the Windows Firewall rules only open the ports to the local network.
+
+logLevel: info
+
+# Unused protocols are switched off so fewer ports are open.
+rtmp: false
+srt: false
+moq: false
+
+###############################################
+# RTSP: the Python ingest worker reads the stream here.
+rtsp: true
+rtspAddress: :8554
+# TCP only: Docker only forwards the RTSP TCP port (8554), not the RTP/RTCP UDP ports,
+# so a reader asking for UDP would fail. OpenCV/FFmpeg falls back to TCP automatically.
+rtspTransports: [tcp]
+
+###############################################
+# HLS: fallback player for browsers (http://LAPTOP_IP:8888/live/).
+hls: true
+hlsAddress: :8888
+hlsAllowOrigins: ["*"]
+
+###############################################
+# WebRTC: the phone publishes (WHIP) and the dashboard plays (WHEP).
+webrtc: true
+# HTTP port used for the WHIP/WHEP handshake (the SDP offer/answer exchange).
+webrtcAddress: :8889
+# CORS: the dashboard (http://localhost:5173 or http://LAPTOP_IP:5173) calls WHEP from the
+# browser. "*" is fine here: no cookies or passwords are involved and the server is LAN-only.
+webrtcAllowOrigins: ["*"]
+# The actual video packets travel over this UDP port (published by Docker as 8189/udp).
+webrtcLocalUDPAddress: :8189
+# Inside Docker the container's own IPs (172.x) are unreachable from the phone; what makes
+# WebRTC work is LAN_IP from .env, passed in as MTX_WEBRTCADDITIONALHOSTS.
+# Interface IPs stay on so MediaMTX still starts (RTSP keeps working) when LAN_IP is empty.
+webrtcIPsFromInterfaces: true
+webrtcAdditionalHosts: []
+# No STUN/TURN servers: phone and laptop are on the same network, and this keeps the demo
+# working on a phone hotspot without internet.
+webrtcICEServers2: []
+
+###############################################
+# Paths: only "live" is accepted. Anything else is refused, which makes typos obvious.
+paths:
+  live:
+    # The stream comes from a client that publishes to us (the phone).
+    source: publisher
