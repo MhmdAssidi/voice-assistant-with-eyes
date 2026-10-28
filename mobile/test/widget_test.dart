@@ -4,12 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:va_mobile/main.dart';
 import 'package:va_mobile/state/app_state.dart';
 
-import 'app_state_test.dart' show FakeApi, FakeStreamer;
+import 'app_state_test.dart' show FakeApi, FakeRecorder, FakeStreamer;
 
 Future<AppState> pumpApp(WidgetTester tester, {String language = 'en'}) async {
   SharedPreferences.setMockInitialValues({'server_host': '192.168.0.105', 'language': language});
-  final state =
-      AppState(api: FakeApi(), streamer: FakeStreamer(), fakeAnswerDelay: Duration.zero);
+  final state = AppState(api: FakeApi(), streamer: FakeStreamer(), recorder: FakeRecorder());
   await state.loadSettings();
   await state.checkServer();
   await tester.pumpWidget(VaApp(state: state));
@@ -50,11 +49,17 @@ void main() {
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
   });
 
-  testWidgets('tapping the button switches to listening', (tester) async {
-    await pumpApp(tester);
+  testWidgets('tap -> listening, tap again -> answer shown', (tester) async {
+    final state = await pumpApp(tester);
+
     await tester.tap(find.byType(FilledButton));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Stop and send'), findsOneWidget);
+
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+    expect(find.text('A door with an exit sign.'), findsOneWidget);
+    state.dispose(); // cancels the auto-stop timer
   });
 
   testWidgets('Arabic uses right-to-left layout', (tester) async {

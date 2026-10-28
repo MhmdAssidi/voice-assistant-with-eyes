@@ -20,7 +20,9 @@ class AppStrings {
     required this.statusError,
     required this.lastAnswer,
     required this.noAnswerYet,
-    required this.testAnswer,
+    required this.micDenied,
+    required this.tooShort,
+    required this.serverTooSlow,
     required this.serverAddress,
     required this.serverAddressHint,
     required this.serverAddressInvalid,
@@ -47,7 +49,9 @@ class AppStrings {
   final String statusError;
   final String lastAnswer;
   final String noAnswerYet;
-  final String testAnswer;
+  final String micDenied;
+  final String tooShort;
+  final String serverTooSlow;
   final String serverAddress;
   final String serverAddressHint;
   final String serverAddressInvalid;
@@ -86,7 +90,9 @@ class AppStrings {
     statusError: 'Something went wrong. Please try again.',
     lastAnswer: 'Last answer',
     noAnswerYet: 'No answer yet.',
-    testAnswer: 'Test answer. Real answers come in a later step.',
+    micDenied: 'Microphone permission is needed to ask questions. Allow it in the phone settings.',
+    tooShort: 'I didn’t hear anything. Tap and speak again.',
+    serverTooSlow: 'The server took too long to answer. Please try again.',
     serverAddress: 'Server IP address',
     serverAddressHint: 'For example 192.168.0.105',
     serverAddressInvalid: 'Enter an address like 192.168.0.105',
@@ -114,7 +120,10 @@ class AppStrings {
     statusError: 'Une erreur s’est produite. Veuillez réessayer.',
     lastAnswer: 'Dernière réponse',
     noAnswerYet: 'Pas encore de réponse.',
-    testAnswer: 'Réponse de test. Les vraies réponses arrivent dans une prochaine étape.',
+    micDenied:
+        'L’accès au micro est nécessaire pour poser des questions. Autorisez-le dans les réglages du téléphone.',
+    tooShort: 'Je n’ai rien entendu. Touchez et parlez à nouveau.',
+    serverTooSlow: 'Le serveur a mis trop de temps à répondre. Veuillez réessayer.',
     serverAddress: 'Adresse IP du serveur',
     serverAddressHint: 'Par exemple 192.168.0.105',
     serverAddressInvalid: 'Entrez une adresse comme 192.168.0.105',
@@ -142,7 +151,9 @@ class AppStrings {
     statusError: 'حدث خطأ. يرجى المحاولة مرة أخرى.',
     lastAnswer: 'آخر إجابة',
     noAnswerYet: 'لا توجد إجابة بعد.',
-    testAnswer: 'إجابة تجريبية. الإجابات الحقيقية تأتي في خطوة لاحقة.',
+    micDenied: 'يلزم إذن الميكروفون لطرح الأسئلة. اسمح به في إعدادات الهاتف.',
+    tooShort: 'لم أسمع شيئًا. انقر وتحدّث مرة أخرى.',
+    serverTooSlow: 'استغرق الخادم وقتًا طويلاً للرد. يرجى المحاولة مرة أخرى.',
     serverAddress: 'عنوان IP للخادم',
     serverAddressHint: 'مثلاً 192.168.0.105',
     serverAddressInvalid: 'أدخل عنوانًا مثل 192.168.0.105',
