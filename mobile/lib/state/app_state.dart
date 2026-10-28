@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../l10n/strings.dart';
 import '../services/api_client.dart';
+import '../services/audio_service.dart';
 import '../services/settings_service.dart';
 import '../services/stream_service.dart';
 
@@ -20,26 +21,37 @@ class AppState extends ChangeNotifier {
     SettingsService? settingsService,
     ApiClient? api,
     CameraStreamer? streamer,
+    QuestionRecorder? recorder,
     this.healthCheckInterval = const Duration(seconds: 5),
-    this.fakeAnswerDelay = const Duration(seconds: 1),
+    this.maxRecording = const Duration(seconds: 10),
+    this.minRecording = const Duration(milliseconds: 700),
   })  : _settingsService = settingsService ?? SettingsService(),
         _api = api ?? ApiClient(),
-        _streamer = streamer ?? WhipStreamService() {
+        _streamer = streamer ?? WhipStreamService(),
+        _recorder = recorder ?? MicRecorder() {
     _streamer.status.addListener(_onCameraStatusChanged);
   }
 
   final SettingsService _settingsService;
   final ApiClient _api;
   final CameraStreamer _streamer;
+  final QuestionRecorder _recorder;
   final Duration healthCheckInterval;
-  final Duration fakeAnswerDelay;
+
+  /// Recording stops by itself after this (questions are short).
+  final Duration maxRecording;
+
+  /// Shorter recordings are treated as an accidental tap.
+  final Duration minRecording;
 
   Settings _settings = const Settings(serverHost: '', language: 'en');
   AppStatus _status = AppStatus.connecting;
   CameraStatus _lastCameraStatus = CameraStatus.off;
-  String? _lastAnswer;
+  AskResponse? _lastResponse;
   Timer? _healthTimer;
+  Timer? _autoStop;
   bool _paused = false; // app in the background
+  bool _busy = false; // a start/stop of the recorder is in progress
 
   /// Called with every sentence that should be spoken by TalkBack.
   void Function(String message)? onAnnounce;
@@ -48,14 +60,8 @@ class AppState extends ChangeNotifier {
   AppStatus get status => _status;
   CameraStatus get cameraStatus => _streamer.status.value;
   CameraStreamer get streamer => _streamer;
-
-  String get cameraText => switch (cameraStatus) {
-        CameraStatus.off => strings.cameraOff,
-        CameraStatus.connecting => strings.cameraConnecting,
-        CameraStatus.streaming => strings.cameraConnected,
-        CameraStatus.reconnecting => strings.cameraDisconnected,
-      };
-  String? get lastAnswer => _lastAnswer;
+  AskResponse? get lastResponse => _lastResponse;
+  String? get lastAnswer => _lastResponse?.answer;
   AppStrings get strings => AppStrings.of(_settings.language);
 
   String get statusText => switch (_status) {
@@ -66,6 +72,13 @@ class AppState extends ChangeNotifier {
         AppStatus.listening => strings.statusListening,
         AppStatus.thinking => strings.statusThinking,
         AppStatus.error => strings.statusError,
+      };
+
+  String get cameraText => switch (cameraStatus) {
+        CameraStatus.off => strings.cameraOff,
+        CameraStatus.connecting => strings.cameraConnecting,
+        CameraStatus.streaming => strings.cameraConnected,
+        CameraStatus.reconnecting => strings.cameraDisconnected,
       };
 
   /// Statuses where nothing is in progress, so a health check may change them.
@@ -98,6 +111,7 @@ class AppState extends ChangeNotifier {
     _paused = true;
     _healthTimer?.cancel();
     _healthTimer = null;
+    if (_status == AppStatus.listening) await _finishRecording(send: false);
     await _streamer.stop();
   }
 
@@ -118,7 +132,7 @@ class AppState extends ChangeNotifier {
     // there; if the connection drops, the streamer reconnects by itself).
     // (_paused: this check may have started just before the app went away.)
     if (reachable && !_paused) unawaited(_streamer.start(host));
-    // Never interrupt a question in progress; B5 handles errors during it.
+    // Never interrupt a question in progress.
     if (_isIdle) _setStatus(reachable ? AppStatus.ready : AppStatus.offline);
   }
 
@@ -146,26 +160,85 @@ class AppState extends ChangeNotifier {
     await checkServer();
   }
 
-  /// The big button: tap once to start listening, tap again to send.
+  /// The big button: tap once to start recording, tap again to send.
   Future<void> onAskPressed() async {
+    if (_busy) return; // the recorder is still starting or stopping
     switch (_status) {
       case AppStatus.ready:
       case AppStatus.error:
-        // TODO(B5): start recording here.
-        _setStatus(AppStatus.listening);
+        await _startRecording();
       case AppStatus.listening:
-        // TODO(B5): stop recording and upload to POST /api/ask.
-        _setStatus(AppStatus.thinking);
-        await Future<void>.delayed(fakeAnswerDelay);
-        _lastAnswer = strings.testAnswer;
-        _setStatus(AppStatus.ready, announce: false);
-        _announce(_lastAnswer!);
+        await _finishRecording();
       case AppStatus.thinking:
         break; // already busy: ignore extra taps
       case AppStatus.connecting:
       case AppStatus.noServer:
       case AppStatus.offline:
         _announce(statusText); // repeat why asking is not possible yet
+    }
+  }
+
+  Future<void> _startRecording() async {
+    _busy = true;
+    try {
+      if (!await _recorder.hasPermission()) {
+        _announce(strings.micDenied);
+        return;
+      }
+      // Not announced on purpose: the screen reader's voice would be recorded
+      // into the question. The start beep + vibration is the signal instead.
+      _setStatus(AppStatus.listening, announce: false);
+      await _recorder.start();
+      _autoStop = Timer(maxRecording, () => _finishRecording());
+    } catch (e) {
+      debugPrint('[ask] could not start recording: $e');
+      _setStatus(AppStatus.error);
+    } finally {
+      _busy = false;
+    }
+  }
+
+  /// Stops recording and, unless [send] is false, uploads the question.
+  Future<void> _finishRecording({bool send = true}) async {
+    if (_status != AppStatus.listening || _busy) return;
+    _busy = true;
+    _autoStop?.cancel();
+    RecordedAudio? audio;
+    try {
+      audio = await _recorder.stop();
+    } catch (e) {
+      debugPrint('[ask] could not stop recording: $e');
+    } finally {
+      _busy = false;
+    }
+
+    if (!send) {
+      _setStatus(AppStatus.ready, announce: false);
+      return;
+    }
+    if (audio == null || audio.duration < minRecording) {
+      _setStatus(AppStatus.ready, announce: false);
+      _announce(strings.tooShort);
+      return;
+    }
+
+    _setStatus(AppStatus.thinking);
+    try {
+      final response = await _api.ask(
+        _settings.serverHost,
+        audio.path,
+        langHint: _settings.language,
+      );
+      _lastResponse = response;
+      _setStatus(AppStatus.ready, announce: false);
+      // TODO(B9): speak it with text-to-speech in response.language.
+      _announce(response.answer);
+    } on TimeoutException {
+      _setStatus(AppStatus.error, announce: false);
+      _announce(strings.serverTooSlow);
+    } catch (e) {
+      debugPrint('[ask] upload failed: $e');
+      _setStatus(AppStatus.error);
     }
   }
 
@@ -181,6 +254,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _healthTimer?.cancel();
+    _autoStop?.cancel();
     _streamer.status.removeListener(_onCameraStatusChanged);
     unawaited(_streamer.stop());
     super.dispose();
