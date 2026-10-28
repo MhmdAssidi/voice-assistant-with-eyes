@@ -4,11 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:va_mobile/main.dart';
 import 'package:va_mobile/state/app_state.dart';
 
-import 'app_state_test.dart' show FakeApi;
+import 'app_state_test.dart' show FakeApi, FakeStreamer;
 
 Future<AppState> pumpApp(WidgetTester tester, {String language = 'en'}) async {
   SharedPreferences.setMockInitialValues({'server_host': '192.168.0.105', 'language': language});
-  final state = AppState(api: FakeApi(), fakeAnswerDelay: Duration.zero);
+  final state =
+      AppState(api: FakeApi(), streamer: FakeStreamer(), fakeAnswerDelay: Duration.zero);
   await state.loadSettings();
   await state.checkServer();
   await tester.pumpWidget(VaApp(state: state));
