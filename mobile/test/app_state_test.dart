@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' show MediaStream;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:va_mobile/services/api_client.dart';
 import 'package:va_mobile/services/settings_service.dart';
+import 'package:va_mobile/services/stream_service.dart';
 import 'package:va_mobile/state/app_state.dart';
 
 /// Pretends to be the server so tests need no network.
@@ -14,12 +17,36 @@ class FakeApi extends ApiClient {
   Future<bool> isServerReachable(String host) async => reachable;
 }
 
+/// Pretends to be the camera stream; tests change [status] by hand.
+class FakeStreamer implements CameraStreamer {
+  final startedHosts = <String>[];
+
+  @override
+  final ValueNotifier<CameraStatus> status = ValueNotifier(CameraStatus.off);
+
+  @override
+  MediaStream? get localStream => null;
+
+  @override
+  Future<void> start(String host) async {
+    if (startedHosts.isEmpty || startedHosts.last != host) startedHosts.add(host);
+  }
+
+  @override
+  Future<void> stop() async => status.value = CameraStatus.off;
+}
+
 Future<(AppState, List<String>)> makeState({
   Map<String, Object> saved = const {},
   bool reachable = true,
+  FakeStreamer? streamer,
 }) async {
   SharedPreferences.setMockInitialValues(saved);
-  final state = AppState(api: FakeApi(reachable: reachable), fakeAnswerDelay: Duration.zero);
+  final state = AppState(
+    api: FakeApi(reachable: reachable),
+    streamer: streamer ?? FakeStreamer(),
+    fakeAnswerDelay: Duration.zero,
+  );
   final announced = <String>[];
   state.onAnnounce = announced.add;
   await state.loadSettings();
@@ -43,7 +70,7 @@ void main() {
   test('connection lost is announced once', () async {
     final api = FakeApi();
     SharedPreferences.setMockInitialValues({'server_host': '192.168.0.105'});
-    final state = AppState(api: api);
+    final state = AppState(api: api, streamer: FakeStreamer());
     final announced = <String>[];
     state.onAnnounce = announced.add;
     await state.loadSettings();
@@ -90,6 +117,57 @@ void main() {
     final reloaded = await SettingsService().load();
     expect(reloaded.serverHost, '10.0.0.5');
     expect(reloaded.language, 'fr');
+  });
+
+  test('camera starts when the server is reachable, restarts on a new address', () async {
+    final streamer = FakeStreamer();
+    final (state, _) =
+        await makeState(saved: {'server_host': '192.168.0.105'}, streamer: streamer);
+    await state.checkServer();
+    await state.checkServer();
+    expect(streamer.startedHosts, ['192.168.0.105']);
+
+    await state.updateSettings(const Settings(serverHost: '10.0.0.5', language: 'en'));
+    expect(streamer.startedHosts, ['192.168.0.105', '10.0.0.5']);
+  });
+
+  test('camera not started while the server is unreachable', () async {
+    final streamer = FakeStreamer();
+    final (state, _) = await makeState(
+        saved: {'server_host': '192.168.0.105'}, reachable: false, streamer: streamer);
+    await state.checkServer();
+    expect(streamer.startedHosts, isEmpty);
+  });
+
+  test('camera connected / disconnected is announced', () async {
+    final streamer = FakeStreamer();
+    final (state, announced) = await makeState(streamer: streamer);
+
+    streamer.status.value = CameraStatus.connecting;
+    streamer.status.value = CameraStatus.streaming;
+    streamer.status.value = CameraStatus.reconnecting;
+    streamer.status.value = CameraStatus.reconnecting;
+    expect(announced, [state.strings.cameraConnected, state.strings.cameraDisconnected]);
+    expect(state.cameraText, state.strings.cameraDisconnected);
+  });
+
+  test('background stops the camera, coming back restarts it', () async {
+    final streamer = FakeStreamer();
+    final (state, _) =
+        await makeState(saved: {'server_host': '192.168.0.105'}, streamer: streamer);
+    await state.checkServer();
+    streamer.status.value = CameraStatus.streaming;
+
+    await state.onAppPaused();
+    expect(state.cameraStatus, CameraStatus.off);
+    await state.checkServer(); // a late check must not restart it
+    expect(streamer.startedHosts, ['192.168.0.105']);
+
+    streamer.startedHosts.clear();
+    state.onAppResumed();
+    await Future<void>.delayed(Duration.zero);
+    expect(streamer.startedHosts, ['192.168.0.105']);
+    state.dispose(); // stops the health-check timer
   });
 
   test('normalizeHost cleans what the user typed', () {

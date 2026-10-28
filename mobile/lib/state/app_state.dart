@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../l10n/strings.dart';
 import '../services/api_client.dart';
 import '../services/settings_service.dart';
+import '../services/stream_service.dart';
 
 /// What the app is doing right now. Each value has a status sentence that is
 /// shown in large text and announced to the screen reader.
@@ -18,26 +19,42 @@ class AppState extends ChangeNotifier {
   AppState({
     SettingsService? settingsService,
     ApiClient? api,
+    CameraStreamer? streamer,
     this.healthCheckInterval = const Duration(seconds: 5),
     this.fakeAnswerDelay = const Duration(seconds: 1),
   })  : _settingsService = settingsService ?? SettingsService(),
-        _api = api ?? ApiClient();
+        _api = api ?? ApiClient(),
+        _streamer = streamer ?? WhipStreamService() {
+    _streamer.status.addListener(_onCameraStatusChanged);
+  }
 
   final SettingsService _settingsService;
   final ApiClient _api;
+  final CameraStreamer _streamer;
   final Duration healthCheckInterval;
   final Duration fakeAnswerDelay;
 
   Settings _settings = const Settings(serverHost: '', language: 'en');
   AppStatus _status = AppStatus.connecting;
+  CameraStatus _lastCameraStatus = CameraStatus.off;
   String? _lastAnswer;
   Timer? _healthTimer;
+  bool _paused = false; // app in the background
 
   /// Called with every sentence that should be spoken by TalkBack.
   void Function(String message)? onAnnounce;
 
   Settings get settings => _settings;
   AppStatus get status => _status;
+  CameraStatus get cameraStatus => _streamer.status.value;
+  CameraStreamer get streamer => _streamer;
+
+  String get cameraText => switch (cameraStatus) {
+        CameraStatus.off => strings.cameraOff,
+        CameraStatus.connecting => strings.cameraConnecting,
+        CameraStatus.streaming => strings.cameraConnected,
+        CameraStatus.reconnecting => strings.cameraDisconnected,
+      };
   String? get lastAnswer => _lastAnswer;
   AppStrings get strings => AppStrings.of(_settings.language);
 
@@ -75,14 +92,49 @@ class AppState extends ChangeNotifier {
     _healthTimer = Timer.periodic(healthCheckInterval, (_) => checkServer());
   }
 
+  /// App sent to the background: Android takes the camera away anyway, so we
+  /// stop cleanly (MediaMTX frees the "live" path) and stop polling.
+  Future<void> onAppPaused() async {
+    _paused = true;
+    _healthTimer?.cancel();
+    _healthTimer = null;
+    await _streamer.stop();
+  }
+
+  /// App back in front: check the server again, which restarts the camera.
+  void onAppResumed() {
+    _paused = false;
+    startMonitoring();
+  }
+
   Future<void> checkServer() async {
     if (!_settings.hasServer) {
       if (_isIdle) _setStatus(AppStatus.noServer);
       return;
     }
-    final reachable = await _api.isServerReachable(_settings.serverHost);
+    final host = _settings.serverHost;
+    final reachable = await _api.isServerReachable(host);
+    // Server found: start the camera (does nothing if it already streams
+    // there; if the connection drops, the streamer reconnects by itself).
+    // (_paused: this check may have started just before the app went away.)
+    if (reachable && !_paused) unawaited(_streamer.start(host));
     // Never interrupt a question in progress; B5 handles errors during it.
     if (_isIdle) _setStatus(reachable ? AppStatus.ready : AppStatus.offline);
+  }
+
+  /// Speaks "Camera connected" / "Camera disconnected" when it changes.
+  void _onCameraStatusChanged() {
+    final now = cameraStatus;
+    final before = _lastCameraStatus;
+    _lastCameraStatus = now;
+    notifyListeners();
+    // Do not talk over the user while they are asking a question.
+    if (_status == AppStatus.listening) return;
+    if (now == CameraStatus.streaming && before != CameraStatus.streaming) {
+      _announce(strings.cameraConnected);
+    } else if (before == CameraStatus.streaming && now != CameraStatus.streaming) {
+      _announce(strings.cameraDisconnected);
+    }
   }
 
   Future<void> updateSettings(Settings newSettings) async {
@@ -129,6 +181,8 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _healthTimer?.cancel();
+    _streamer.status.removeListener(_onCameraStatusChanged);
+    unawaited(_streamer.stop());
     super.dispose();
   }
 }

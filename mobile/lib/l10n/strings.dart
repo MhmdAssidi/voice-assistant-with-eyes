@@ -29,6 +29,8 @@ class AppStrings {
     required this.saved,
     required this.cameraConnected,
     required this.cameraDisconnected,
+    required this.cameraConnecting,
+    required this.cameraOff,
   });
 
   final String appTitle;
@@ -54,6 +56,8 @@ class AppStrings {
   final String saved;
   final String cameraConnected;
   final String cameraDisconnected;
+  final String cameraConnecting;
+  final String cameraOff;
 
   /// Supported languages: code -> name written in that language.
   static const languages = {'en': 'English', 'fr': 'Français', 'ar': 'العربية'};
@@ -91,6 +95,8 @@ class AppStrings {
     saved: 'Settings saved.',
     cameraConnected: 'Camera connected.',
     cameraDisconnected: 'Camera disconnected.',
+    cameraConnecting: 'Connecting the camera…',
+    cameraOff: 'Camera off.',
   );
 
   static const _fr = AppStrings._(
@@ -117,6 +123,8 @@ class AppStrings {
     saved: 'Réglages enregistrés.',
     cameraConnected: 'Caméra connectée.',
     cameraDisconnected: 'Caméra déconnectée.',
+    cameraConnecting: 'Connexion de la caméra…',
+    cameraOff: 'Caméra éteinte.',
   );
 
   static const _ar = AppStrings._(
@@ -143,5 +151,7 @@ class AppStrings {
     saved: 'تم حفظ الإعدادات.',
     cameraConnected: 'الكاميرا متصلة.',
     cameraDisconnected: 'الكاميرا غير متصلة.',
+    cameraConnecting: 'جارٍ توصيل الكاميرا…',
+    cameraOff: 'الكاميرا متوقفة.',
   );
 }
