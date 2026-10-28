@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// Answer to a question, mirrors AskResponse in backend/app/contracts.py.
@@ -65,20 +66,28 @@ class ApiClient {
   /// True if GET /api/health answers {"status":"ok"} within 3 seconds.
   Future<bool> isServerReachable(String host) async {
     try {
-      final response = await _client
-          .get(baseUri(host).replace(path: '/api/health'))
-          .timeout(const Duration(seconds: 3));
+      final request = http.Request('GET', baseUri(host).replace(path: '/api/health'))
+        ..persistentConnection = false; // see the note below
+      final response = await _client.send(request).timeout(const Duration(seconds: 3));
+      await response.stream.drain<void>();
       return response.statusCode == 200;
-    } catch (_) {
+    } catch (e) {
       // Timeout, no route to host, connection refused...: all mean "not reachable".
+      debugPrint('[api] health check failed: $e');
       return false;
     }
   }
+
+  // Why every request uses a fresh connection (persistentConnection = false):
+  // uvicorn closes idle connections after 5 s and we poll every 5 s, so a
+  // reused connection was sometimes closed by the server at the very moment we
+  // sent on it ("connection aborted") -> the app flashed "server unreachable".
 
   /// Uploads the recorded question (multipart: "audio" + "lang_hint") to
   /// POST /api/ask. Throws TimeoutException after [askTimeout].
   Future<AskResponse> ask(String host, String audioPath, {String? langHint}) async {
     final request = http.MultipartRequest('POST', baseUri(host).replace(path: '/api/ask'))
+      ..persistentConnection = false // see the note above
       ..files.add(await http.MultipartFile.fromPath('audio', audioPath))
       ..fields.addAll({'lang_hint': ?langHint});
 

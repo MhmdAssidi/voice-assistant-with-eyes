@@ -119,13 +119,27 @@ void main() {
       expect(h.announced, [h.state.strings.statusReady]);
     });
 
-    test('connection lost is announced once', () async {
+    test('connection lost after 2 failed checks, announced once', () async {
       final h = await makeState();
       h.api.reachable = false;
+      await h.state.checkServer();
+      expect(h.state.status, AppStatus.ready, reason: 'one failed check is ignored');
       await h.state.checkServer();
       await h.state.checkServer(); // still offline: no second announcement
       expect(h.state.status, AppStatus.offline);
       expect(h.announced.where((m) => m == h.state.strings.statusOffline).length, 1);
+    });
+
+    test('a single failed check between good ones does not flicker', () async {
+      final h = await makeState();
+      h.api.reachable = false;
+      await h.state.checkServer();
+      h.api.reachable = true;
+      await h.state.checkServer();
+      h.api.reachable = false;
+      await h.state.checkServer();
+      expect(h.state.status, AppStatus.ready);
+      expect(h.announced, [h.state.strings.statusReady]);
     });
 
     test('settings are saved and the language changes the texts', () async {

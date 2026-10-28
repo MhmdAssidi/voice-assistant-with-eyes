@@ -52,6 +52,7 @@ class AppState extends ChangeNotifier {
   Timer? _autoStop;
   bool _paused = false; // app in the background
   bool _busy = false; // a start/stop of the recorder is in progress
+  int _failedChecks = 0; // health checks failed in a row
 
   /// Called with every sentence that should be spoken by TalkBack.
   void Function(String message)? onAnnounce;
@@ -128,6 +129,10 @@ class AppState extends ChangeNotifier {
     }
     final host = _settings.serverHost;
     final reachable = await _api.isServerReachable(host);
+    _failedChecks = reachable ? 0 : _failedChecks + 1;
+    // Once ready, one lost check (a dropped Wi-Fi packet) is not enough to
+    // say "server not reachable": wait for a second failure in a row.
+    if (!reachable && _status == AppStatus.ready && _failedChecks < 2) return;
     // Server found: start the camera (does nothing if it already streams
     // there; if the connection drops, the streamer reconnects by itself).
     // (_paused: this check may have started just before the app went away.)
