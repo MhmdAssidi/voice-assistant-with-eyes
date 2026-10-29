@@ -49,7 +49,13 @@ def test_ask_with_text() -> None:
     assert "safe" not in answer.answer.lower()
 
 
-def test_ask_with_audio() -> None:
+def test_ask_with_audio(monkeypatch) -> None:
+    # B6: the real speech-to-text model is replaced by a fake (no 480 MB download in CI);
+    # the real model is tested in tests/assistant/test_stt.py (marked slow).
+    from app.assistant import stt
+
+    fake = stt.Transcript("what's in front of me?", "en", "en", 0.99, 1.5)
+    monkeypatch.setattr(stt, "transcribe", lambda audio, lang_hint=None: fake)
     files = {"audio": ("question.m4a", b"fake-audio-bytes", "audio/mp4")}
     r = client.post("/api/ask", files=files)
     assert r.status_code == 200
