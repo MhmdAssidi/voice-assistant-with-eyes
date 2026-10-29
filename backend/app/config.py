@@ -36,12 +36,24 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5vl:3b"
     whisper_model: str = "small"
+    models_dir: str = "../data/models"  # downloaded model weights (git-ignored)
+    # Keep each spoken question as data/questions/<time>_<lang>.m4a (for tests and
+    # the B13 evaluation). Off by default: turn on only with the speaker's consent.
+    save_question_audio: bool = False
     confidence_threshold: float = 0.25
 
     @property
     def frames_path(self) -> Path:
         """Absolute folder where frame JPEGs and thumbnails are stored."""
         path = Path(self.frames_dir)
+        if not path.is_absolute():
+            path = (BACKEND_DIR / path).resolve()
+        return path
+
+    @property
+    def models_path(self) -> Path:
+        """Absolute folder where model weights (e.g. Whisper) are cached."""
+        path = Path(self.models_dir)
         if not path.is_absolute():
             path = (BACKEND_DIR / path).resolve()
         return path
