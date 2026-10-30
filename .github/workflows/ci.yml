@@ -17,6 +17,24 @@ jobs:
       matrix:
         # Student A uses 3.11, Student B uses 3.14: the code must work on both.
         python: ["3.11", "3.14"]
+    # Database tests (tests/memory) run against a real Postgres + pgvector (A1)
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: va
+          POSTGRES_PASSWORD: va
+          POSTGRES_DB: va
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U va -d va"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://va:va@localhost:5432/va
+      REQUIRE_DB: "1"  # fail (instead of skip) if the database is unreachable
     defaults:
       run:
         working-directory: backend
