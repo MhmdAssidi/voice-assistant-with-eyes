@@ -15,6 +15,9 @@ pytest>=8.0
 ruff>=0.6
 
 # --- Student A adds below (database, OpenCV, OCR, YOLO, CLIP) ---
+psycopg[binary,pool]>=3.2 # PostgreSQL driver + connection pool (A1)
+pgvector>=0.3             # vector column type for psycopg (A1)
+numpy>=1.26               # embeddings are numpy arrays (A1)
 
 # --- Student B adds below (faster-whisper, google-genai) ---
 faster-whisper>=1.1       # speech-to-text on CPU (B6); model weights download to data/models
