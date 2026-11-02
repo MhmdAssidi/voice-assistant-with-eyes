@@ -1,6 +1,7 @@
-"""The answer pipeline (owner: Student B, task B7).
+"""The answer pipeline (owner: Student B, tasks B7-B8).
 
-question -> evidence frames (latest + best search hits) -> prompt -> VLM -> answer.
+question -> evidence frames (latest + best search hits) -> prompt -> VLM
+-> honesty rules (uncertainty.py) -> answer.
 Every stage is timed; the times go back to the phone and the dashboard.
 """
 
@@ -10,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from app.assistant import prompts
+from app.assistant import prompts, uncertainty
 from app.assistant.i18n import NO_EVIDENCE, VLM_UNAVAILABLE, phrase
 from app.assistant.vlm import VlmError, get_provider
 from app.contracts import Evidence, FrameSummary
@@ -109,12 +110,22 @@ def answer_question(question: str, language: str) -> AnswerResult:
         timings["vlm"] = _ms_since(started)
         return AnswerResult(phrase(VLM_UNAVAILABLE, language), False, evidence_out, timings)
     timings["vlm"] = _ms_since(started)
-    log.info(
-        "answer [%s, %d images, %d ms, confident=%s]: %r",
-        language, len(images), timings["vlm"], reply.confident, reply.answer,
+
+    # B8: honesty rules in code (weak evidence -> "I'm not sure", never "safe", max 2 sentences)
+    text, confident = uncertainty.apply_rules(
+        reply.answer,
+        reply.confident,
+        language,
+        question,
+        hit_scores=[e.score for e in evidence if not e.is_latest],
+        has_latest=any(e.is_latest for e in evidence),
     )
-    # B8 adds the honesty rules here (score threshold, "I'm not sure", never "safe").
-    return AnswerResult(reply.answer.strip(), reply.confident, evidence_out, timings)
+    log.info(
+        "answer [%s, %d images, %d ms, model confident=%s -> %s]: %r%s",
+        language, len(images), timings["vlm"], reply.confident, confident, text,
+        "" if text == reply.answer.strip() else f" (model said: {reply.answer!r})",
+    )
+    return AnswerResult(text, confident, evidence_out, timings)
 
 
 def _read_jpeg(frame_id: int) -> bytes | None:

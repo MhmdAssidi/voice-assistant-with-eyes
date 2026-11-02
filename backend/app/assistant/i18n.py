@@ -1,6 +1,6 @@
 """Fixed sentences the assistant says, in English, French and Arabic (owner: Student B).
 
-B6: "no question heard". B7: no evidence / model unavailable. B8 adds the honesty phrases.
+B6: "no question heard". B7: no evidence / model unavailable. B8: honesty phrases.
 """
 
 from app.contracts import Language
@@ -11,6 +11,20 @@ NOT_HEARD: dict[Language, str] = {
     "en": "I didn't hear a question. Please tap and ask again.",
     "fr": "Je n'ai pas entendu de question. Touchez et posez-la à nouveau.",
     "ar": "لم أسمع سؤالاً. انقر واطرح سؤالك مرة أخرى.",
+}
+
+# Every not-confident answer starts with this (B8).
+NOT_SURE: dict[Language, str] = {
+    "en": "I'm not sure.",
+    "fr": "Je ne suis pas sûr.",
+    "ar": "لست متأكدًا.",
+}
+
+# Replaces any sentence that calls something "safe" (B8): we can never promise safety.
+CHECK_CAREFULLY: dict[Language, str] = {
+    "en": "Please check carefully around you.",
+    "fr": "Vérifiez bien autour de vous.",
+    "ar": "يرجى التحقق بعناية مما حولك.",
 }
 
 NO_EVIDENCE: dict[Language, str] = {

@@ -24,6 +24,9 @@ or guess anything that is not visible.
 start the answer by saying you are not sure.
 7. For questions about what is in front of the user right now, use the newest photo. \
 Use positions (left, center, right, near) when they help.
+8. The answer is read aloud by a voice that only speaks {language_name}: if a sign or \
+label is written in another language, say what it means in {language_name} instead of \
+copying the foreign words.
 
 Reply with JSON only: {{"answer": "<text>", "confident": true or false}}"""
 
