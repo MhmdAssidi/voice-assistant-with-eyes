@@ -21,3 +21,4 @@ numpy>=1.26               # embeddings are numpy arrays (A1)
 
 # --- Student B adds below (faster-whisper, google-genai) ---
 faster-whisper>=1.1       # speech-to-text on CPU (B6); model weights download to data/models
+google-genai>=1.0         # Gemini vision-language model, official SDK (B7)

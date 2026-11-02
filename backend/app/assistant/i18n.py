@@ -1,6 +1,6 @@
 """Fixed sentences the assistant says, in English, French and Arabic (owner: Student B).
 
-B6 adds the "no question heard" sentence; B8 adds the honesty phrases.
+B6: "no question heard". B7: no evidence / model unavailable. B8 adds the honesty phrases.
 """
 
 from app.contracts import Language
@@ -11,6 +11,18 @@ NOT_HEARD: dict[Language, str] = {
     "en": "I didn't hear a question. Please tap and ask again.",
     "fr": "Je n'ai pas entendu de question. Touchez et posez-la à nouveau.",
     "ar": "لم أسمع سؤالاً. انقر واطرح سؤالك مرة أخرى.",
+}
+
+NO_EVIDENCE: dict[Language, str] = {
+    "en": "I'm not sure. I haven't seen anything yet; check that the camera is connected.",
+    "fr": "Je ne suis pas sûr. Je n'ai encore rien vu ; vérifiez que la caméra est connectée.",
+    "ar": "لست متأكدًا. لم أرَ شيئًا بعد؛ تأكد من أن الكاميرا متصلة.",
+}
+
+VLM_UNAVAILABLE: dict[Language, str] = {
+    "en": "I'm not sure. I can't analyse the images right now; please try again.",
+    "fr": "Je ne suis pas sûr. Je ne peux pas analyser les images pour le moment ; réessayez.",
+    "ar": "لست متأكدًا. لا أستطيع تحليل الصور الآن؛ يرجى المحاولة مرة أخرى.",
 }
 
 

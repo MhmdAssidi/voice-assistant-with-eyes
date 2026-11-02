@@ -32,9 +32,11 @@ class Settings(BaseSettings):
     # ---------- Student B section ----------
     vlm_provider: str = "gemini"  # gemini | ollama
     gemini_api_key: str = ""
-    gemini_model: str = ""
+    # Stable + free tier. Measured Nov 2026: ~1 s; gemini-3.8-flash took ~60 s on the free tier.
+    gemini_model: str = "gemini-3.5-flash-lite"
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5vl:3b"
+    vlm_timeout_s: float = 15.0  # the phone gives up after 30 s in total (STT + search + VLM)
     whisper_model: str = "small"
     models_dir: str = "../data/models"  # downloaded model weights (git-ignored)
     # Keep each spoken question as data/questions/<time>_<lang>.m4a (for tests and

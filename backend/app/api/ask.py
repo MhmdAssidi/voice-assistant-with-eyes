@@ -1,23 +1,21 @@
 """POST /api/ask (owner: Student B).
 
-B6: real speech-to-text (faster-whisper) for audio questions.
-Still a STUB after that: the answer is fake until the retrieval + VLM
-pipeline arrives in B7-B8.
+audio (or text) -> speech-to-text (B6) -> evidence frames + VLM answer (B7).
+B8 adds the honesty rules, B11 saves each Q&A and broadcasts it.
 """
 
 import io
 import logging
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from app.assistant import stt
+from app.assistant import answer, stt
 from app.assistant.i18n import NOT_HEARD, phrase
 from app.config import settings
-from app.contracts import AskResponse, Evidence
-from app.memory.search import search_frames
+from app.contracts import AskResponse
 
 router = APIRouter(prefix="/api/ask", tags=["ask (Student B)"])
 log = logging.getLogger("uvicorn.error")  # shows up in the uvicorn terminal
@@ -60,27 +58,18 @@ async def ask(
         question = text or ""
         language = stt.fallback_language(lang_hint)
 
-    search_started = time.perf_counter()
-    since = datetime.now(UTC) - timedelta(minutes=10)
-    hits = search_frames(question, since=since, limit=3)
-    timings["search"] = _ms_since(search_started)
-
+    # Search + VLM call are blocking (disk, network): also in a worker thread.
+    result = await run_in_threadpool(answer.answer_question, question, language)
+    timings.update(result.timings_ms)
     timings["total"] = _ms_since(started)
+
     return AskResponse(
-        id=1,
+        id=1,  # B11 replaces this with the qa_log row id
         question=question,
         language=language,
-        answer="This is a test answer from the S0 stub. I'm not sure what is in front of you yet.",
-        confident=False,
-        evidence=[
-            Evidence(
-                frame_id=h.frame.id,
-                captured_at=h.frame.captured_at,
-                thumb_url=h.frame.thumb_url,
-                score=h.score,
-            )
-            for h in hits
-        ],
+        answer=result.answer,
+        confident=result.confident,
+        evidence=result.evidence,
         timings_ms=timings,
     )
 
