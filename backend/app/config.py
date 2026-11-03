@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     rtsp_url: str = "rtsp://localhost:8554/live"
     frames_dir: str = "../data/frames"  # relative paths are resolved from backend/
     retention_minutes: int = 30
+    ingest_fps: float = 5.0  # frames per second the worker analyses (stream runs at 15)
+    rtsp_reconnect_s: float = 2.0  # wait between reconnect attempts when the stream drops
+    status_interval_s: float = 2.0  # how often the worker posts an ingest_status event
 
     # ---------- Student B section ----------
     vlm_provider: str = "gemini"  # gemini | ollama
