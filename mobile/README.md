@@ -23,6 +23,26 @@ flutter analyze
 flutter test
 ```
 
+## Voices for spoken answers (English, French, Arabic)
+
+Answers are read aloud with the phone's own text-to-speech engine, in the **language of the
+question** (en-US, fr-FR, ar-SA). **Settings → Voices on this phone** shows ✓/✗ for each.
+
+The app uses **Speech Services by Google** automatically when it is installed: phone makers'
+own engines often have no Arabic (Samsung TTS on our test phone had none).
+
+If a voice is still missing (Samsung, Android 12):
+
+1. Make sure **Speech Services by Google** is installed (Play Store).
+2. Settings → **General management** → **Text-to-speech output**
+   (other phones: Settings → Accessibility → Text-to-speech).
+3. Tap ⚙️ next to **Speech Services by Google** → **Install voice data** → download
+   **English (United States)**, **Français (France)** and **العربية**.
+4. Reopen VA Eyes → Settings: all three show ✓.
+
+A missing voice does not break the app: the answer is still shown on screen and read with the
+default voice.
+
 ## Layout
 
 - `lib/screens/` — UI screens (main screen, settings)

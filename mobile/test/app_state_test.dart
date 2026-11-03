@@ -8,6 +8,7 @@ import 'package:va_mobile/services/api_client.dart';
 import 'package:va_mobile/services/audio_service.dart';
 import 'package:va_mobile/services/settings_service.dart';
 import 'package:va_mobile/services/stream_service.dart';
+import 'package:va_mobile/services/tts_service.dart';
 import 'package:va_mobile/state/app_state.dart';
 
 /// Pretends to be the server so tests need no network.
@@ -15,6 +16,7 @@ class FakeApi extends ApiClient {
   FakeApi({this.reachable = true});
 
   bool reachable;
+  String answerLanguage = 'en';
   Object? askError; // thrown by ask() when set
   final asked = <(String path, String? langHint)>[];
 
@@ -25,10 +27,10 @@ class FakeApi extends ApiClient {
   Future<AskResponse> ask(String host, String audioPath, {String? langHint}) async {
     asked.add((audioPath, langHint));
     if (askError != null) throw askError!;
-    return const AskResponse(
+    return AskResponse(
       id: 1,
       question: 'what is in front of me?',
-      language: 'en',
+      language: answerLanguage,
       answer: 'A door with an exit sign.',
       confident: true,
       timingsMs: {'total': 900},
@@ -74,13 +76,42 @@ class FakeRecorder implements QuestionRecorder {
   }
 }
 
+/// Pretends to be the phone's voice. By default a sentence "ends" at once;
+/// with [holdAnswers], speak() waits until stop() is called (to test stopping).
+class FakeSpeaker implements Speaker {
+  FakeSpeaker({this.holdAnswers = false});
+
+  final bool holdAnswers;
+  final spoken = <(String text, String language)>[];
+  int stops = 0;
+  Completer<void>? _current;
+
+  @override
+  Future<void> speak(String text, String language) async {
+    spoken.add((text, language));
+    if (!holdAnswers) return;
+    _current = Completer<void>();
+    await _current!.future;
+  }
+
+  @override
+  Future<void> stop() async {
+    stops++;
+    if (_current?.isCompleted == false) _current!.complete();
+  }
+
+  @override
+  Future<Map<String, bool>> voices() async => {'en': true, 'fr': true, 'ar': false};
+}
+
 class Harness {
-  Harness(this.state, this.api, this.streamer, this.recorder, this.announced);
+  Harness(this.state, this.api, this.streamer, this.recorder, this.speaker, this.announced);
 
   final AppState state;
   final FakeApi api;
   final FakeStreamer streamer;
   final FakeRecorder recorder;
+  final FakeSpeaker speaker;
   final List<String> announced;
 }
 
@@ -88,22 +119,25 @@ Future<Harness> makeState({
   Map<String, Object> saved = const {'server_host': '192.168.0.105'},
   bool reachable = true,
   Duration maxRecording = const Duration(seconds: 10),
+  FakeSpeaker? speaker,
 }) async {
   SharedPreferences.setMockInitialValues(saved);
   final api = FakeApi(reachable: reachable);
   final streamer = FakeStreamer();
   final recorder = FakeRecorder();
+  final voice = speaker ?? FakeSpeaker();
   final state = AppState(
     api: api,
     streamer: streamer,
     recorder: recorder,
+    speaker: voice,
     maxRecording: maxRecording,
   );
   final announced = <String>[];
   state.onAnnounce = announced.add;
   await state.loadSettings();
   await state.checkServer();
-  return Harness(state, api, streamer, recorder, announced);
+  return Harness(state, api, streamer, recorder, voice, announced);
 }
 
 void main() {
@@ -177,7 +211,8 @@ void main() {
       expect(h.api.asked.single, ('/tmp/question.m4a', 'en'));
       expect(h.state.status, AppStatus.ready);
       expect(h.state.lastAnswer, 'A door with an exit sign.');
-      expect(h.announced, [h.state.strings.statusThinking, 'A door with an exit sign.']);
+      expect(h.announced, [h.state.strings.statusThinking]);
+      expect(h.speaker.spoken.last, ('A door with an exit sign.', 'en'));
     });
 
     test('recording stops by itself after the maximum time', () async {
@@ -236,6 +271,50 @@ void main() {
       expect(h.state.status, AppStatus.offline);
       expect(h.recorder.recording, isFalse);
       expect(h.announced, [h.state.strings.statusOffline]);
+    });
+  });
+
+  group('spoken answers (B9)', () {
+    test('the answer is read in the QUESTION language, not the app language', () async {
+      final h = await makeState(saved: {'server_host': '192.168.0.105', 'language': 'en'});
+      h.api.answerLanguage = 'ar';
+      await h.state.onAskPressed();
+      await h.state.onAskPressed();
+      expect(h.speaker.spoken.last, ('A door with an exit sign.', 'ar'));
+      expect(h.state.status, AppStatus.ready);
+    });
+
+    test('status sentences are spoken in the app language', () async {
+      final h = await makeState(saved: {'server_host': '192.168.0.105', 'language': 'fr'});
+      expect(h.speaker.spoken, [(h.state.strings.statusReady, 'fr')]);
+    });
+
+    test('a tap while the answer is read stops the voice, then back to ready', () async {
+      final h = await makeState(speaker: FakeSpeaker(holdAnswers: true));
+      await h.state.onAskPressed();
+      final answering = h.state.onAskPressed(); // upload + start reading (held)
+      await Future<void>.delayed(Duration.zero);
+      expect(h.state.status, AppStatus.speaking);
+
+      await h.state.onAskPressed(); // tap = stop reading
+      await answering;
+      expect(h.speaker.stops, greaterThanOrEqualTo(1));
+      expect(h.state.status, AppStatus.ready);
+    });
+
+    test('nothing is spoken while recording; voice is silenced before recording', () async {
+      final h = await makeState();
+      final stopsBefore = h.speaker.stops;
+      await h.state.onAskPressed(); // start recording
+      final spokenBefore = h.speaker.spoken.length;
+      h.streamer.status.value = CameraStatus.streaming; // would normally be announced
+      expect(h.speaker.spoken.length, spokenBefore);
+      expect(h.speaker.stops, stopsBefore + 1);
+    });
+
+    test('voices on the phone are reported', () async {
+      final h = await makeState();
+      expect(await h.state.voices(), {'en': true, 'fr': true, 'ar': false});
     });
   });
 
