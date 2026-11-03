@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     ingest_fps: float = 5.0  # frames per second the worker analyses (stream runs at 15)
     rtsp_reconnect_s: float = 2.0  # wait between reconnect attempts when the stream drops
     status_interval_s: float = 2.0  # how often the worker posts an ingest_status event
+    # Frame selection (A3). Measured on a 320-px-wide gray copy of each frame.
+    sharpness_min: float = 60.0  # Laplacian variance below this: too blurry, rejected
+    sharpness_good: float = 120.0  # between min and good: mild blur, sharpened in A4
+    novelty_min_bits: int = 10  # dHash bits (of 64) that must differ from the last kept frame
+    keep_every_s: float = 5.0  # keep a frame at least this often, even in a still scene
+    informative_min: float = 0.015  # edges + text score below this: blank wall, lens covered
+    dark_brightness: float = 70.0  # mean gray below this counts as a dark frame (A3, A4)
 
     # ---------- Student B section ----------
     vlm_provider: str = "gemini"  # gemini | ollama
