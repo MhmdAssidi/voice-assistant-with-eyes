@@ -17,6 +17,10 @@ class AppStrings {
     required this.statusReady,
     required this.statusListening,
     required this.statusThinking,
+    required this.statusSpeaking,
+    required this.stopSpeakingButton,
+    required this.voicesTitle,
+    required this.voiceMissing,
     required this.statusError,
     required this.lastAnswer,
     required this.noAnswerYet,
@@ -46,6 +50,10 @@ class AppStrings {
   final String statusReady;
   final String statusListening;
   final String statusThinking;
+  final String statusSpeaking;
+  final String stopSpeakingButton;
+  final String voicesTitle;
+  final String voiceMissing;
   final String statusError;
   final String lastAnswer;
   final String noAnswerYet;
@@ -87,6 +95,11 @@ class AppStrings {
     statusReady: 'Ready. Tap the big button to ask.',
     statusListening: 'Listening. Tap again to stop.',
     statusThinking: 'Thinking…',
+    statusSpeaking: 'Reading the answer. Tap to stop.',
+    stopSpeakingButton: 'Stop reading',
+    voicesTitle: 'Voices on this phone',
+    voiceMissing:
+        'Missing voice: Android Settings → General management → Text-to-speech → install the language.',
     statusError: 'Something went wrong. Please try again.',
     lastAnswer: 'Last answer',
     noAnswerYet: 'No answer yet.',
@@ -117,6 +130,11 @@ class AppStrings {
     statusReady: 'Prêt. Touchez le grand bouton pour poser une question.',
     statusListening: 'J’écoute. Touchez à nouveau pour arrêter.',
     statusThinking: 'Je réfléchis…',
+    statusSpeaking: 'Lecture de la réponse. Touchez pour arrêter.',
+    stopSpeakingButton: 'Arrêter la lecture',
+    voicesTitle: 'Voix sur ce téléphone',
+    voiceMissing:
+        'Voix manquante : Paramètres Android → Gestion globale → Synthèse vocale → installer la langue.',
     statusError: 'Une erreur s’est produite. Veuillez réessayer.',
     lastAnswer: 'Dernière réponse',
     noAnswerYet: 'Pas encore de réponse.',
@@ -148,6 +166,10 @@ class AppStrings {
     statusReady: 'جاهز. انقر على الزر الكبير لطرح سؤال.',
     statusListening: 'أستمع. انقر مرة أخرى للإيقاف.',
     statusThinking: 'أفكّر…',
+    statusSpeaking: 'أقرأ الإجابة. انقر للإيقاف.',
+    stopSpeakingButton: 'أوقف القراءة',
+    voicesTitle: 'الأصوات على هذا الهاتف',
+    voiceMissing: 'صوت ناقص: إعدادات أندرويد ← الإدارة العامة ← تحويل النص إلى كلام ← ثبّت اللغة.',
     statusError: 'حدث خطأ. يرجى المحاولة مرة أخرى.',
     lastAnswer: 'آخر إجابة',
     noAnswerYet: 'لا توجد إجابة بعد.',

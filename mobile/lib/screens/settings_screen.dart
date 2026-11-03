@@ -17,6 +17,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _hostController;
   late String _language;
+  late final Future<Map<String, bool>> _voices;
   String? _hostError;
 
   @override
@@ -24,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _hostController = TextEditingController(text: widget.state.settings.serverHost);
     _language = widget.state.settings.language;
+    _voices = widget.state.voices();
   }
 
   @override
@@ -89,6 +91,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: Text(entry.value, style: const TextStyle(fontSize: 24)),
                 onTap: () => setState(() => _language = entry.key),
               ),
+            const SizedBox(height: 32),
+            // Answers are read in the question's language: each needs a voice on the phone.
+            Semantics(
+              header: true,
+              child: Text(s.voicesTitle, style: Theme.of(context).textTheme.titleLarge),
+            ),
+            const SizedBox(height: 8),
+            FutureBuilder<Map<String, bool>>(
+              future: _voices,
+              builder: (context, snapshot) {
+                final voices = snapshot.data;
+                if (voices == null) return const LinearProgressIndicator();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final entry in voices.entries)
+                      // MergeSemantics: read as one item, e.g. "Français, installed"
+                      MergeSemantics(
+                        child: ListTile(
+                          leading: Icon(entry.value ? Icons.check_circle : Icons.error,
+                              color: entry.value ? Colors.greenAccent : Colors.orangeAccent),
+                          title: Text(AppStrings.languages[entry.key] ?? entry.key,
+                              style: const TextStyle(fontSize: 20)),
+                          trailing: Text(entry.value ? '✓' : '✗',
+                              style: const TextStyle(fontSize: 24)),
+                        ),
+                      ),
+                    if (voices.containsValue(false))
+                      Text(s.voiceMissing, style: const TextStyle(fontSize: 18)),
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 32),
             SizedBox(
               height: 64,

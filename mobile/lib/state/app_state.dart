@@ -7,28 +7,32 @@ import '../services/api_client.dart';
 import '../services/audio_service.dart';
 import '../services/settings_service.dart';
 import '../services/stream_service.dart';
+import '../services/tts_service.dart';
 
 /// What the app is doing right now. Each value has a status sentence that is
-/// shown in large text and announced to the screen reader.
-enum AppStatus { connecting, noServer, offline, ready, listening, thinking, error }
+/// shown in large text and spoken aloud.
+enum AppStatus { connecting, noServer, offline, ready, listening, thinking, speaking, error }
 
 /// The single source of truth for the UI (simple ChangeNotifier state).
 ///
-/// Screens listen to it and rebuild; it never touches widgets itself. Screen
-/// reader announcements go out through [onAnnounce], which the home screen sets.
+/// Screens listen to it and rebuild; it never touches widgets itself. Everything
+/// the user must know is spoken with the phone's own voice ([Speaker]), so the
+/// app works without a screen reader too.
 class AppState extends ChangeNotifier {
   AppState({
     SettingsService? settingsService,
     ApiClient? api,
     CameraStreamer? streamer,
     QuestionRecorder? recorder,
+    Speaker? speaker,
     this.healthCheckInterval = const Duration(seconds: 5),
     this.maxRecording = const Duration(seconds: 10),
     this.minRecording = const Duration(milliseconds: 700),
   })  : _settingsService = settingsService ?? SettingsService(),
         _api = api ?? ApiClient(),
         _streamer = streamer ?? WhipStreamService(),
-        _recorder = recorder ?? MicRecorder() {
+        _recorder = recorder ?? MicRecorder(),
+        _speaker = speaker ?? PhoneSpeaker() {
     _streamer.status.addListener(_onCameraStatusChanged);
   }
 
@@ -36,6 +40,7 @@ class AppState extends ChangeNotifier {
   final ApiClient _api;
   final CameraStreamer _streamer;
   final QuestionRecorder _recorder;
+  final Speaker _speaker;
   final Duration healthCheckInterval;
 
   /// Recording stops by itself after this (questions are short).
@@ -54,7 +59,7 @@ class AppState extends ChangeNotifier {
   bool _busy = false; // a start/stop of the recorder is in progress
   int _failedChecks = 0; // health checks failed in a row
 
-  /// Called with every sentence that should be spoken by TalkBack.
+  /// Also called with every status sentence that is spoken (used by tests).
   void Function(String message)? onAnnounce;
 
   Settings get settings => _settings;
@@ -72,8 +77,12 @@ class AppState extends ChangeNotifier {
         AppStatus.ready => strings.statusReady,
         AppStatus.listening => strings.statusListening,
         AppStatus.thinking => strings.statusThinking,
+        AppStatus.speaking => strings.statusSpeaking,
         AppStatus.error => strings.statusError,
       };
+
+  /// Which of en/fr/ar have a voice on this phone (shown in Settings).
+  Future<Map<String, bool>> voices() => _speaker.voices();
 
   String get cameraText => switch (cameraStatus) {
         CameraStatus.off => strings.cameraOff,
@@ -165,7 +174,8 @@ class AppState extends ChangeNotifier {
     await checkServer();
   }
 
-  /// The big button: tap once to start recording, tap again to send.
+  /// The big button: tap once to start recording, tap again to send, and tap
+  /// while the answer is being read to stop the voice.
   Future<void> onAskPressed() async {
     if (_busy) return; // the recorder is still starting or stopping
     switch (_status) {
@@ -174,6 +184,8 @@ class AppState extends ChangeNotifier {
         await _startRecording();
       case AppStatus.listening:
         await _finishRecording();
+      case AppStatus.speaking:
+        await _speaker.stop(); // the answer flow then goes back to "ready"
       case AppStatus.thinking:
         break; // already busy: ignore extra taps
       case AppStatus.connecting:
@@ -190,8 +202,9 @@ class AppState extends ChangeNotifier {
         _announce(strings.micDenied);
         return;
       }
-      // Not announced on purpose: the screen reader's voice would be recorded
-      // into the question. The start beep + vibration is the signal instead.
+      // Silence the phone's voice first, or it would be recorded into the question.
+      // "Listening" is not spoken for the same reason: the beep + vibration is the signal.
+      await _speaker.stop();
       _setStatus(AppStatus.listening, announce: false);
       await _recorder.start();
       _autoStop = Timer(maxRecording, () => _finishRecording());
@@ -235,9 +248,11 @@ class AppState extends ChangeNotifier {
         langHint: _settings.language,
       );
       _lastResponse = response;
-      _setStatus(AppStatus.ready, announce: false);
-      // TODO(B9): speak it with text-to-speech in response.language.
-      _announce(response.answer);
+      // Read the answer aloud in the QUESTION's language (it may differ from
+      // the app's language); a tap on the button stops it.
+      _setStatus(AppStatus.speaking, announce: false);
+      await _speaker.speak(response.answer, response.language);
+      if (_status == AppStatus.speaking) _setStatus(AppStatus.ready, announce: false);
     } on TimeoutException {
       _setStatus(AppStatus.error, announce: false);
       _announce(strings.serverTooSlow);
@@ -254,12 +269,19 @@ class AppState extends ChangeNotifier {
     if (announce) _announce(statusText);
   }
 
-  void _announce(String message) => onAnnounce?.call(message);
+  /// Speaks a status sentence in the app's language. Never while the user is
+  /// speaking (it would be recorded) or while an answer is being read.
+  void _announce(String message) {
+    if (_status == AppStatus.listening || _status == AppStatus.speaking) return;
+    onAnnounce?.call(message);
+    unawaited(_speaker.speak(message, _settings.language));
+  }
 
   @override
   void dispose() {
     _healthTimer?.cancel();
     _autoStop?.cancel();
+    unawaited(_speaker.stop());
     _streamer.status.removeListener(_onCameraStatusChanged);
     unawaited(_streamer.stop());
     super.dispose();
