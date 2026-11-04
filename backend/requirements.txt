@@ -21,6 +21,7 @@ numpy>=1.26               # embeddings are numpy arrays (A1)
 opencv-python-headless>=4.10  # RTSP frame grabbing and image processing (A2+)
 easyocr>=1.7              # OCR in English, French and Arabic; pulls in PyTorch (A5)
 arabic-reshaper>=3.0      # tests only: draws joined Arabic letters on test signs (A5)
+ultralytics>=8.3          # YOLOv8n object detection, pre-trained on COCO (A6)
 
 # --- Student B adds below (faster-whisper, google-genai) ---
 faster-whisper>=1.1       # speech-to-text on CPU (B6); model weights download to data/models
