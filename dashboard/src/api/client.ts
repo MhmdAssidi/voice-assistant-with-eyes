@@ -20,3 +20,10 @@ export const api = {
   questions: (limit = 50) => getJson<QaRecord[]>(`/api/questions?limit=${limit}`),
   status: () => getJson<SystemStatus>('/api/status'),
 }
+
+/** WHEP URL of the live stream: VITE_WHEP_URL from dashboard/.env, else MediaMTX on the
+ *  same host as the page (works for http://localhost:5173 and http://LAN_IP:5173). */
+export function whepUrl(): string {
+  const fromEnv = import.meta.env.VITE_WHEP_URL as string | undefined
+  return fromEnv || `http://${window.location.hostname}:8889/live/whep`
+}

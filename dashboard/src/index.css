@@ -147,3 +147,58 @@ button {
 .error {
   color: var(--bad);
 }
+
+/* ---------- Live page (A13) ---------- */
+
+.video-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3; /* the phone streams 640x480 */
+  max-height: 70vh;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video-box video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video-box video.hidden {
+  visibility: hidden;
+}
+
+.video-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ccc;
+  font-size: 1.1rem;
+}
+
+.player-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.muted,
+.hint {
+  color: var(--muted);
+}
+
+.hint {
+  font-size: 0.9rem;
+}
+
+button:focus-visible,
+nav a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
