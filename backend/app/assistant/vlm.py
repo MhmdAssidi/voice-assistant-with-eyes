@@ -36,37 +36,50 @@ class VlmProvider(Protocol):
 
 
 class GeminiProvider:
+    """Gemini with a backup model.
+
+    The free tier is sometimes overloaded (measured: the usual ~1 s became 24 s,
+    or a 503/504 error). Then the next model in `models` is tried at once, each
+    with its share of the time budget, so the phone still gets an answer.
+    """
+
     name = "gemini"
 
-    def __init__(self, api_key: str, model: str, timeout_s: float) -> None:
-        if not api_key or not model:
+    def __init__(self, api_key: str, models: list[str], timeout_s: float) -> None:
+        models = [m for m in models if m]
+        if not api_key or not models:
             raise VlmError("GEMINI_API_KEY or GEMINI_MODEL is empty: set both in .env")
         from google import genai  # imported here: tests and Ollama users don't need it
 
         self._genai = genai
-        self._client = genai.Client(
-            api_key=api_key,
-            http_options=genai.types.HttpOptions(timeout=int(timeout_s * 1000)),  # ms
-        )
-        self._model = model
+        self._client = genai.Client(api_key=api_key)
+        self._models = models
+        self._timeout_ms = int(timeout_s * 1000 / len(models))  # per model
 
     def generate(self, system: str, user: str, images: list[bytes]) -> VlmAnswer:
         types = self._genai.types
+        errors = self._genai.errors
         parts = [types.Part.from_bytes(data=jpeg, mime_type="image/jpeg") for jpeg in images]
-        try:
-            response = self._client.models.generate_content(
-                model=self._model,
-                contents=[*parts, user],
-                config=types.GenerateContentConfig(
-                    system_instruction=system,
-                    response_mime_type="application/json",
-                    response_schema=VlmAnswer,
-                    temperature=0.2,  # low: describe, don't be creative
-                ),
-            )
-        except Exception as error:  # network, quota (429), bad key...
-            raise VlmError(f"Gemini failed: {error}") from error
-        return parse_answer(response.text or "")
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            response_mime_type="application/json",
+            response_schema=VlmAnswer,
+            temperature=0.2,  # low: describe, don't be creative
+            http_options=types.HttpOptions(timeout=self._timeout_ms),
+        )
+        failures: list[str] = []
+        for model in self._models:
+            try:
+                response = self._client.models.generate_content(
+                    model=model, contents=[*parts, user], config=config
+                )
+                return parse_answer(response.text or "")
+            except errors.ClientError as error:
+                # 4xx (bad key, quota used up, unknown model): another model won't help
+                raise VlmError(f"Gemini refused ({model}): {error}") from error
+            except Exception as error:  # 5xx overloaded, timeout, network, bad reply
+                failures.append(f"{model}: {str(error)[:120]}")
+        raise VlmError("Gemini failed: " + " | ".join(failures))
 
 
 class OllamaProvider:
@@ -114,4 +127,8 @@ def get_provider() -> VlmProvider:
     """The provider chosen in .env, created once."""
     if settings.vlm_provider == "ollama":
         return OllamaProvider(settings.ollama_url, settings.ollama_model, settings.vlm_timeout_s)
-    return GeminiProvider(settings.gemini_api_key, settings.gemini_model, settings.vlm_timeout_s)
+    return GeminiProvider(
+        settings.gemini_api_key,
+        [settings.gemini_model, settings.gemini_fallback_model],
+        settings.vlm_timeout_s,
+    )
