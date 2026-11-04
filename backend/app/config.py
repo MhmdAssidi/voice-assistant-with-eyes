@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     ocr_retry_below: float = 0.6  # best block below this: retry on a thresholded copy
     ocr_detect_width: int = 480  # find text boxes on a copy this wide (2x faster than 640)
     ocr_latin_sure: float = 0.7  # Latin reading at least this sure: skip the Arabic reader
+    # Objects (A6). YOLO weights download once to MODELS_DIR.
+    yolo_model: str = "yolov8n.pt"  # n = nano: the smallest, fast enough on a laptop CPU
+    detect_min_confidence: float = 0.4  # objects below this are dropped
+    near_area: float = 0.25  # box covering more than this share of the frame = "near"
 
     # ---------- Student B section ----------
     vlm_provider: str = "gemini"  # gemini | ollama
