@@ -139,6 +139,59 @@ def test_ask_endpoint_returns_the_model_answer(memory, provider) -> None:
     assert set(body["timings_ms"]) == {"stt", "search", "vlm", "total"}
 
 
+# ---------- Gemini backup model ----------
+
+
+class _FakeModels:
+    """Stands in for client.models: answers per model name (str) or raises (Exception)."""
+
+    def __init__(self, behaviour: dict) -> None:
+        self.behaviour = behaviour
+        self.tried: list[str] = []
+
+    def generate_content(self, model, contents, config):  # noqa: ANN001, ANN201
+        self.tried.append(model)
+        outcome = self.behaviour[model]
+        if isinstance(outcome, Exception):
+            raise outcome
+        return type("Response", (), {"text": outcome})()
+
+
+def _gemini(behaviour: dict) -> tuple[vlm.GeminiProvider, _FakeModels]:
+    provider = vlm.GeminiProvider("test-key", ["main", "backup"], timeout_s=20)
+    fake = _FakeModels(behaviour)
+    provider._client = type("Client", (), {"models": fake})()
+    return provider, fake
+
+
+def test_gemini_uses_the_backup_when_the_main_model_is_overloaded() -> None:
+    from google.genai import errors
+
+    overloaded = errors.ServerError(503, {"error": {"message": "model overloaded"}})
+    backup_reply = '{"answer": "A door.", "confident": true}'
+    provider, fake = _gemini({"main": overloaded, "backup": backup_reply})
+    expected = vlm.VlmAnswer(answer="A door.", confident=True)
+    assert provider.generate("system", "user", []) == expected
+    assert fake.tried == ["main", "backup"]
+    assert provider._timeout_ms == 10000, "each model gets half of the 20 s budget"
+
+
+def test_gemini_does_not_retry_when_the_request_is_refused() -> None:
+    from google.genai import errors
+
+    bad_key = errors.ClientError(400, {"error": {"message": "API key not valid"}})
+    provider, fake = _gemini({"main": bad_key, "backup": '{"answer": "x", "confident": true}'})
+    with pytest.raises(vlm.VlmError, match="refused"):
+        provider.generate("system", "user", [])
+    assert fake.tried == ["main"]
+
+
+def test_gemini_reports_when_every_model_fails() -> None:
+    provider, _ = _gemini({"main": TimeoutError("slow"), "backup": TimeoutError("slow too")})
+    with pytest.raises(vlm.VlmError, match="main: slow .*backup: slow too"):
+        provider.generate("system", "user", [])
+
+
 # ---------- prompts and model replies ----------
 
 

@@ -1,7 +1,7 @@
 """POST /api/ask (owner: Student B).
 
-audio (or text) -> speech-to-text (B6) -> evidence frames + VLM answer (B7).
-B8 adds the honesty rules, B11 saves each Q&A and broadcasts it.
+audio (or text) -> speech-to-text (B6) -> evidence frames + VLM answer (B7)
+with honesty rules (B8) -> saved in qa_log and broadcast as question_answered (B11).
 """
 
 import io
@@ -12,10 +12,11 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from app.assistant import answer, stt
+from app.assistant import answer, qa_repository, stt
 from app.assistant.i18n import NOT_HEARD, phrase
 from app.config import settings
-from app.contracts import AskResponse
+from app.contracts import AskResponse, Event, QaRecord
+from app.realtime.hub import hub
 
 router = APIRouter(prefix="/api/ask", tags=["ask (Student B)"])
 log = logging.getLogger("uvicorn.error")  # shows up in the uvicorn terminal
@@ -63,15 +64,21 @@ async def ask(
     timings.update(result.timings_ms)
     timings["total"] = _ms_since(started)
 
-    return AskResponse(
-        id=1,  # B11 replaces this with the qa_log row id
-        question=question,
-        language=language,
-        answer=result.answer,
-        confident=result.confident,
-        evidence=result.evidence,
-        timings_ms=timings,
+    # B11: keep it in the history, then tell the dashboard (History page, status bar).
+    record = await run_in_threadpool(
+        qa_repository.save,
+        question, language, result.answer, result.confident, result.evidence, timings,
     )
+    if record is None:  # database down: the user still gets the answer
+        record = QaRecord(
+            id=0, asked_at=datetime.now(UTC), question=question, language=language,
+            answer=result.answer, confident=result.confident, evidence=result.evidence,
+            timings_ms=timings,
+        )
+    await hub.publish(
+        Event(type="question_answered", ts=record.asked_at, data=record.model_dump(mode="json"))
+    )
+    return AskResponse(**record.model_dump(exclude={"asked_at"}))
 
 
 def _not_heard(language: str, timings: dict[str, int], started: float) -> AskResponse:
