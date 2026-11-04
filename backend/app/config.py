@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     keep_every_s: float = 5.0  # keep a frame at least this often, even in a still scene
     informative_min: float = 0.015  # edges + text score below this: blank wall, lens covered
     dark_brightness: float = 70.0  # mean gray below this counts as a dark frame (A3, A4)
+    # OCR (A5). EasyOCR weights download once to MODELS_DIR/easyocr.
+    ocr_min_confidence: float = 0.4  # blocks below this are dropped
+    ocr_retry_below: float = 0.6  # best block below this: retry on a thresholded copy
+    ocr_detect_width: int = 480  # find text boxes on a copy this wide (2x faster than 640)
+    ocr_latin_sure: float = 0.7  # Latin reading at least this sure: skip the Arabic reader
 
     # ---------- Student B section ----------
     vlm_provider: str = "gemini"  # gemini | ollama

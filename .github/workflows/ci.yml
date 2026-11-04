@@ -45,6 +45,8 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
           cache-dependency-path: backend/requirements.txt
+      # CPU-only PyTorch first (~200 MB); otherwise easyocr pulls the ~2.5 GB CUDA build (A5)
+      - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
       - run: pip install -r requirements.txt
       - name: Lint
         run: ruff check .
