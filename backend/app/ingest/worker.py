@@ -53,8 +53,9 @@ class IngestWorker:
         notifier: EventNotifier | None = None,
     ) -> None:
         self.grabber = FrameGrabber(source, reconnect_s=settings.rtsp_reconnect_s)
-        self.pipeline = pipeline or Pipeline()
         self.notifier = notifier or EventNotifier(settings.api_internal_url)
+        # Loads the AI models once (OCR, YOLO, CLIP: ~30 s); the pipeline posts frame_stored
+        self.pipeline = pipeline or Pipeline(notifier=self.notifier)
         self.stats = IngestStats()
         self.running = False
         self._stop = threading.Event()
