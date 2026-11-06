@@ -31,12 +31,12 @@ CHAIR = DetectedObject(label="chair", confidence=0.7, bbox=[0, 300, 120, 470],
 
 def test_caption_with_text_and_objects() -> None:
     caption = build_caption("SORTIE\nEXIT", [DOOR, CHAIR, CHAIR])
-    assert caption == "Text: SORTIE EXIT. Objects: door (center, near), chair (left)"
+    assert caption == 'a photo of a door and a chair, with a sign that says "SORTIE EXIT"'
 
 
 def test_caption_parts_are_optional() -> None:
-    assert build_caption("", [CHAIR]) == "Objects: chair (left)"
-    assert build_caption("مخرج", []) == "Text: مخرج."
+    assert build_caption("", [CHAIR]) == "a photo of a chair"
+    assert build_caption("مخرج", []) == 'a sign that says "مخرج"'
     assert build_caption("  ", []) == ""
 
 
@@ -106,7 +106,7 @@ def test_kept_frame_is_stored_with_files_row_and_event(pipeline, frames_dir) -> 
     assert row.ocr_text == "EXIT"
     assert row.ocr_blocks[0].text == "EXIT"
     assert row.object_labels == ["door"]
-    assert row.caption_text == "Text: EXIT. Objects: door (center, near)"
+    assert row.caption_text == 'a photo of a door, with a sign that says "EXIT"'
     assert (row.width, row.height) == (640, 480)
     assert row.sharpness > settings.sharpness_min and row.dhash is not None
     assert row.image_emb[0] == 1.0 and row.text_emb[1] == 1.0
