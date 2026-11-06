@@ -7,8 +7,9 @@ from fastapi.testclient import TestClient
 
 from app.api import status as status_api
 from app.assistant import answer, qa_repository, vlm
-from app.contracts import Event
+from app.contracts import Event, FrameDetail
 from app.main import app
+from app.memory import search
 from app.realtime.hub import hub
 
 client = TestClient(app)
@@ -65,6 +66,11 @@ class FakeProvider:
 
 def test_a_new_answer_is_pushed_to_the_dashboard_instantly(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(answer, "get_provider", lambda: FakeProvider())
+    # A8: search reads the real database now (empty in tests), so give it a frame "in front"
+    in_front = FrameDetail(id=1, captured_at=datetime.now(UTC), thumb_url="", ocr_text="",
+                           object_labels=["door"], enhanced=False, image_url="", width=640,
+                           height=480, sharpness=150.0, brightness=120.0, ocr_blocks=[], objects=[])
+    monkeypatch.setattr(search, "get_latest_frame", lambda max_age_s=10: in_front)
     with client.websocket_connect("/ws/events") as ws:
         r = client.post("/api/ask", data={"text": "What is in front of me?", "lang_hint": "en"})
         assert r.status_code == 200

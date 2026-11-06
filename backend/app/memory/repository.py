@@ -20,7 +20,7 @@ from app.db import get_conn
 MAX_LIST_LIMIT = 200  # contract: GET /api/frames limit max 200
 
 # Every column except the two 512-dim embeddings and the tsvector (heavy, rarely needed)
-_COLUMNS = """id, captured_at, image_path, thumb_path, width, height, sharpness, brightness,
+FRAME_COLUMNS = """id, captured_at, image_path, thumb_path, width, height, sharpness, brightness,
     enhanced, dhash, ocr_text, ocr_blocks, objects, caption_text"""
 
 
@@ -132,7 +132,7 @@ def _as_numpy(vector) -> np.ndarray | None:
     return vector.to_numpy()
 
 
-def _row_to_frame(row: dict) -> FrameRow:
+def row_to_frame(row: dict) -> FrameRow:
     return FrameRow(
         id=row["id"],
         captured_at=row["captured_at"],
@@ -191,10 +191,10 @@ def insert_frame(frame: NewFrame) -> int:
 
 def get_frame(frame_id: int, with_embeddings: bool = False) -> FrameRow | None:
     """One frame by id, or None if it does not exist (or was deleted by retention)."""
-    columns = _COLUMNS + (", image_emb, text_emb" if with_embeddings else "")
+    columns = FRAME_COLUMNS + (", image_emb, text_emb" if with_embeddings else "")
     with get_conn() as conn, conn.cursor(row_factory=dict_row) as cur:
         row = cur.execute(f"SELECT {columns} FROM frames WHERE id = %s", (frame_id,)).fetchone()
-    return _row_to_frame(row) if row else None
+    return row_to_frame(row) if row else None
 
 
 def list_frames(
@@ -216,12 +216,12 @@ def list_frames(
         conditions.append("id < %(before_id)s")
         params["before_id"] = before_id
     sql = (
-        f"SELECT {_COLUMNS} FROM frames WHERE {' AND '.join(conditions)} "
+        f"SELECT {FRAME_COLUMNS} FROM frames WHERE {' AND '.join(conditions)} "
         "ORDER BY captured_at DESC, id DESC LIMIT %(limit)s"
     )
     with get_conn() as conn, conn.cursor(row_factory=dict_row) as cur:
         rows = cur.execute(sql, params).fetchall()
-    return [_row_to_frame(r) for r in rows]
+    return [row_to_frame(r) for r in rows]
 
 
 def count_frames() -> int:

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
-from app.contracts import AskResponse, FrameDetail, FrameSummary, QaRecord, SearchHit, SystemStatus
+from app.contracts import AskResponse, QaRecord, SystemStatus
 from app.main import app
 
 client = TestClient(app)
@@ -19,26 +19,8 @@ def test_health() -> None:
     assert r.json() == {"status": "ok"}
 
 
-def test_frames_list_and_detail() -> None:
-    r = client.get("/api/frames")
-    assert r.status_code == 200
-    frames = [FrameSummary(**f) for f in r.json()]
-    assert len(frames) > 0
-    # newest first
-    assert frames[0].captured_at >= frames[-1].captured_at
-
-    r = client.get(f"/api/frames/{frames[0].id}")
-    assert r.status_code == 200
-    FrameDetail(**r.json())
-
-    assert client.get("/api/frames/999999").status_code == 404
-
-
-def test_search() -> None:
-    r = client.get("/api/search", params={"q": "exit sign"})
-    assert r.status_code == 200
-    hits = [SearchHit(**h) for h in r.json()]
-    assert all(0.0 <= h.score <= 1.0 for h in hits)
+# A8: /api/frames and /api/search now read the real database, so their tests moved to
+# tests/memory/test_search.py (they need the throw-away va_test database fixture).
 
 
 def test_ask_with_text() -> None:

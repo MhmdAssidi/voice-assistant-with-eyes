@@ -16,9 +16,13 @@ from contextlib import contextmanager
 
 import psycopg
 from pgvector.psycopg import register_vector
-from psycopg_pool import ConnectionPool
+from psycopg_pool import ConnectionPool, PoolTimeout
 
 from app.config import settings
+
+# What a database call can raise when Postgres is down, missing a table, etc.
+# Catch these (not Exception) to degrade gracefully instead of crashing a request.
+DB_ERRORS = (psycopg.Error, PoolTimeout)
 
 _pool: ConnectionPool | None = None
 

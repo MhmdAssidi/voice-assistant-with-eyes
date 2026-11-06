@@ -43,7 +43,14 @@ def test_db_url() -> Iterator[str]:
 
 
 @pytest.fixture
-def clean_frames(test_db_url: str) -> None:
-    """Start each test with an empty frames table."""
+def clean_frames(test_db_url: str) -> Iterator[None]:
+    """Start each test with an empty frames table, and leave it empty.
+
+    The pool stays on va_test until the end of the session, so later tests
+    (e.g. Student B's /api/ask tests) must not find our test frames there.
+    """
+    with db.get_conn() as conn:
+        conn.execute("TRUNCATE frames RESTART IDENTITY")
+    yield
     with db.get_conn() as conn:
         conn.execute("TRUNCATE frames RESTART IDENTITY")
