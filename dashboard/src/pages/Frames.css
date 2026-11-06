@@ -1,0 +1,447 @@
+/* Timeline, Frame detail and Search pages (owner: Student A, task A10).
+   Uses the colour variables of index.css, so light and dark mode both work. */
+
+:root {
+  --ocr: #e8590c; /* text read by OCR */
+  --obj: #1c7ed6; /* objects found by YOLO */
+  --new: #f59f00;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ocr: #ff922b;
+    --obj: #4dabf7;
+  }
+}
+
+.page-head {
+  margin-bottom: 12px;
+}
+
+.page-head h2 {
+  margin: 4px 0;
+}
+
+.page-head p {
+  margin: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+code {
+  font-size: 0.9em;
+}
+
+.empty-state p {
+  margin: 4px 0;
+}
+
+/* ---------- frame cards (Timeline + Search) ---------- */
+
+.frame-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.frame-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.frame-card:hover,
+.frame-card:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.frame-card:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.frame-card-new {
+  border-color: var(--new);
+  box-shadow: 0 0 0 2px var(--new);
+}
+
+.frame-thumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--bg);
+}
+
+.frame-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.frame-thumb img.missing {
+  visibility: hidden;
+}
+
+.tag {
+  position: absolute;
+  top: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.tag-new {
+  left: 6px;
+  background: var(--new);
+  color: #1c1f24;
+}
+
+.tag-enhanced {
+  right: 6px;
+  background: rgb(0 0 0 / 65%);
+}
+
+.frame-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 10px;
+}
+
+.frame-time {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.frame-time time {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.frame-text {
+  margin: 0;
+  font-weight: 600;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.frame-text.empty {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.chip-more {
+  font-weight: 600;
+}
+
+/* ---------- Timeline ---------- */
+
+.minute-group {
+  margin-bottom: 18px;
+}
+
+.minute-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 8px;
+  padding: 6px 0;
+  font-size: 1rem;
+  background: var(--bg);
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 32px;
+}
+
+/* ---------- Search ---------- */
+
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.search-form input {
+  flex: 1 1 260px;
+}
+
+select {
+  font: inherit;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+.chip-button {
+  cursor: pointer;
+  padding: 3px 10px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.chip-button:hover {
+  border-color: var(--accent);
+}
+
+.rank {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.score-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.score-bar {
+  position: relative;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.score-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--good);
+}
+
+.score-fill.weak {
+  background: var(--bad);
+}
+
+.score-threshold {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text);
+}
+
+.match-image,
+.match-text {
+  border-color: var(--obj);
+  color: var(--obj);
+}
+
+.match-ocr {
+  border-color: var(--ocr);
+  color: var(--ocr);
+}
+
+/* ---------- Frame detail ---------- */
+
+.link-button {
+  padding: 4px 0;
+  background: none;
+  color: var(--accent);
+}
+
+.detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .detail-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail-figure {
+  margin: 0;
+}
+
+.detail-image {
+  position: relative;
+  line-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.detail-image img {
+  width: 100%;
+  height: auto;
+}
+
+.detail-image svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.box rect {
+  fill: none;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.box text {
+  font-family: system-ui, sans-serif;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgb(0 0 0 / 80%);
+  stroke-width: 3px;
+  fill: #fff;
+}
+
+.box-ocr rect {
+  stroke: var(--ocr);
+}
+
+.box-obj rect {
+  stroke: var(--obj);
+}
+
+.box-active rect {
+  stroke-width: 6;
+  fill: rgb(255 255 255 / 18%);
+}
+
+.box-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.box-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.box-toggles a {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 3px solid;
+}
+
+.swatch-ocr {
+  border-color: var(--ocr);
+}
+
+.swatch-obj {
+  border-color: var(--obj);
+}
+
+.detail-side .panel h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+}
+
+.data-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}
