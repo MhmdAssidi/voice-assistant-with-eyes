@@ -20,6 +20,7 @@ request (`mobile/test/accessibility_test.dart`, `app_state_test.dart`, `widget_t
 | 7 | **One-handed use** | Whole flow = tap the big button with a thumb (≥ 85 % of the width, ≥ 30 % of the height); start/stop beeps + vibration replace looking at the screen | Size test + phone check | ✅ automated · ✅ phone check |
 | 8 | **Arabic right-to-left** | Arabic UI mirrors; an Arabic answer is shown right-to-left even in an English app | `widget_test.dart` (RTL) + phone check | ✅ automated · ✅ phone check |
 | 9 | **No voice over the user** | Status speech is muted while recording (it would be recorded) and while an answer is read; the voice is silenced before recording starts | `app_state_test.dart` | ✅ automated |
+| 11 | **Spoken hazard warnings** (B12, bonus) | Stairs / closed door seen by the worker (A11) → two long vibration pulses (unlike the short start/stop tap) + one sentence in the app's language; never while recording or reading an answer; the same kind at most once per 20 s; a door is said as "there may be" (the detector is less sure about doors) | `app_state_test.dart` (spoken warnings group) + phone check | ✅ automated |
 | 10 | **Honest answers** | "I'm not sure" when evidence is weak, never "safe", at most 2 sentences (backend B8); covered lens → "I can't see anything clearly right now" | `backend/tests/assistant/test_uncertainty.py`, `test_answer.py` | ✅ automated |
 
 TalkBack (Android's screen reader) is supported through the labels above, but the app does

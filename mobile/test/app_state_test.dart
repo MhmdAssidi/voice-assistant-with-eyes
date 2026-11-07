@@ -6,6 +6,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart' show MediaStream;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:va_mobile/services/api_client.dart';
 import 'package:va_mobile/services/audio_service.dart';
+import 'package:va_mobile/services/events_service.dart';
 import 'package:va_mobile/services/settings_service.dart';
 import 'package:va_mobile/services/stream_service.dart';
 import 'package:va_mobile/services/tts_service.dart';
@@ -104,8 +105,47 @@ class FakeSpeaker implements Speaker {
   Future<Map<String, bool>> voices() async => {'en': true, 'fr': true, 'ar': false};
 }
 
+/// Pretends to be the server's WebSocket; tests push warnings with [send].
+class FakeWarnings implements WarningSource {
+  final _controller = StreamController<HazardWarning>.broadcast(sync: true);
+  final startedHosts = <String>[];
+  bool running = false;
+
+  void send(String kind) => _controller.add(HazardWarning(kind: kind, confidence: 0.9));
+
+  @override
+  Stream<HazardWarning> get warnings => _controller.stream;
+
+  @override
+  void start(String host) {
+    running = true;
+    if (startedHosts.isEmpty || startedHosts.last != host) startedHosts.add(host);
+  }
+
+  @override
+  Future<void> stop() async => running = false;
+}
+
+/// Counts the warning vibrations.
+class FakeBuzzer implements WarningBuzzer {
+  int buzzes = 0;
+
+  @override
+  Future<void> buzz() async => buzzes++;
+}
+
+/// A clock the test moves forward by hand.
+class FakeClock {
+  DateTime now = DateTime(2026, 11, 7, 10);
+
+  DateTime call() => now;
+
+  void advance(Duration duration) => now = now.add(duration);
+}
+
 class Harness {
-  Harness(this.state, this.api, this.streamer, this.recorder, this.speaker, this.announced);
+  Harness(this.state, this.api, this.streamer, this.recorder, this.speaker, this.announced,
+      this.warnings, this.buzzer, this.clock);
 
   final AppState state;
   final FakeApi api;
@@ -113,6 +153,9 @@ class Harness {
   final FakeRecorder recorder;
   final FakeSpeaker speaker;
   final List<String> announced;
+  final FakeWarnings warnings;
+  final FakeBuzzer buzzer;
+  final FakeClock clock;
 }
 
 Future<Harness> makeState({
@@ -126,18 +169,24 @@ Future<Harness> makeState({
   final streamer = FakeStreamer();
   final recorder = FakeRecorder();
   final voice = speaker ?? FakeSpeaker();
+  final warnings = FakeWarnings();
+  final buzzer = FakeBuzzer();
+  final clock = FakeClock();
   final state = AppState(
     api: api,
     streamer: streamer,
     recorder: recorder,
     speaker: voice,
+    warnings: warnings,
+    buzzer: buzzer,
+    clock: clock.call,
     maxRecording: maxRecording,
   );
   final announced = <String>[];
   state.onAnnounce = announced.add;
   await state.loadSettings();
   await state.checkServer();
-  return Harness(state, api, streamer, recorder, voice, announced);
+  return Harness(state, api, streamer, recorder, voice, announced, warnings, buzzer, clock);
 }
 
 void main() {
@@ -359,6 +408,110 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(h.streamer.startedHosts, ['192.168.0.105']);
       h.state.dispose(); // stops the health-check timer
+    });
+  });
+
+  group('spoken warnings (B12)', () {
+    test('a warning vibrates and is spoken in the app language', () async {
+      final h = await makeState(saved: {'server_host': '192.168.0.105', 'language': 'fr'});
+      h.warnings.send('stairs');
+      expect(h.buzzer.buzzes, 1);
+      expect(h.speaker.spoken.last, ('Attention : escalier devant vous.', 'fr'));
+    });
+
+    test('each kind has its own sentence in en / fr / ar', () async {
+      for (final language in ['en', 'fr', 'ar']) {
+        final h = await makeState(saved: {'server_host': '192.168.0.105', 'language': language});
+        h.warnings
+          ..send('closed_door')
+          ..send('stairs');
+        final strings = h.state.strings;
+        expect(h.announced.sublist(1), [strings.warningClosedDoor, strings.warningStairs]);
+        expect(strings.warningClosedDoor, isNot(strings.warningStairs));
+        expect(h.speaker.spoken.last.$2, language);
+      }
+    });
+
+    test('the same kind is spoken at most once every 20 s', () async {
+      final h = await makeState();
+      h.warnings.send('stairs');
+      h.clock.advance(const Duration(seconds: 19));
+      h.warnings.send('stairs'); // still the same staircase: silent
+      h.warnings.send('closed_door'); // another kind: spoken
+      h.clock.advance(const Duration(seconds: 2));
+      h.warnings.send('stairs'); // 21 s after the first: spoken again
+      final strings = h.state.strings;
+      expect(h.announced.sublist(1),
+          [strings.warningStairs, strings.warningClosedDoor, strings.warningStairs]);
+      expect(h.buzzer.buzzes, 3);
+    });
+
+    test('never while the user is asking a question (it would be recorded)', () async {
+      final h = await makeState();
+      await h.state.onAskPressed(); // recording
+      h.warnings.send('stairs');
+      expect(h.buzzer.buzzes, 0);
+      expect(h.announced, isNot(contains(h.state.strings.warningStairs)));
+
+      await h.state.onAskPressed(); // send; the answer is read, then ready
+      h.warnings.send('stairs'); // the dropped one did not start the 20 s wait
+      expect(h.speaker.spoken.last, (h.state.strings.warningStairs, 'en'));
+    });
+
+    test('never over an answer being read', () async {
+      final h = await makeState(speaker: FakeSpeaker(holdAnswers: true));
+      await h.state.onAskPressed();
+      final answering = h.state.onAskPressed();
+      await Future<void>.delayed(Duration.zero);
+      expect(h.state.status, AppStatus.speaking);
+
+      h.warnings.send('closed_door');
+      expect(h.buzzer.buzzes, 0);
+      expect(h.speaker.spoken.last.$1, 'A door with an exit sign.');
+      await h.state.onAskPressed(); // stop reading
+      await answering;
+    });
+
+    test('listens when the server is reachable, stops in the background', () async {
+      final h = await makeState();
+      expect(h.warnings.startedHosts, ['192.168.0.105']);
+      expect(h.warnings.running, isTrue);
+
+      await h.state.onAppPaused();
+      expect(h.warnings.running, isFalse);
+      h.warnings.send('stairs'); // a late message: the app is not in front
+      expect(h.buzzer.buzzes, 0);
+      h.state.dispose();
+    });
+
+    test('not started while the server is unreachable', () async {
+      final h = await makeState(reachable: false);
+      expect(h.warnings.startedHosts, isEmpty);
+    });
+  });
+
+  group('warning messages from the WebSocket (B12)', () {
+    test('a warning event becomes a HazardWarning', () {
+      const message = '{"type":"warning","ts":"2026-11-07T10:00:00Z",'
+          '"data":{"kind":"stairs","confidence":0.82,"frame_id":12,"position":"center"}}';
+      final warning = HazardWarning.fromMessage(message)!;
+      expect(warning.kind, 'stairs');
+      expect(warning.confidence, 0.82);
+      expect(warning.position, 'center');
+    });
+
+    test('other events, unknown kinds and broken messages are ignored', () {
+      for (final message in <Object?>[
+        '{"type":"frame_stored","ts":"2026-11-07T10:00:00Z","data":{"id":3}}',
+        '{"type":"warning","ts":"2026-11-07T10:00:00Z","data":{"kind":"fire","confidence":1}}',
+        '{"type":"warning","ts":"2026-11-07T10:00:00Z","data":{"confidence":0.9}}',
+        '{"type":"warning","data":"stairs"}',
+        'not json',
+        '[1, 2]',
+        null,
+      ]) {
+        expect(HazardWarning.fromMessage(message), isNull, reason: '$message');
+      }
     });
   });
 }
