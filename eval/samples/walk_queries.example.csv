@@ -1,0 +1,11 @@
+query,language,from_s,to_s
+What did the exit sign say?,en,12,18
+What room number did I pass?,en,25,30
+Where are the stairs?,en,40,52
+Qu'est-ce qui était écrit sur la porte ?,fr,60,66
+Où est l'escalier ?,fr,40,52
+شو مكتوب على اللافتة؟,ar,12,18
+وين الدرج؟,ar,40,52
+a plate of spaghetti,en,,
+un chat sur le canapé,fr,,
+طائرة في السماء,ar,,

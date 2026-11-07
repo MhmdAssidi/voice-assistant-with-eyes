@@ -6,20 +6,20 @@ Each task is developed on its own branch and merged through a pull request revie
 
 | Task | What | Status |
 | --- | --- | --- |
-| A0 | Environment setup, review of the shared skeleton | ⬜ |
-| A1 | PostgreSQL + pgvector, `frames` schema, repository layer | ⬜ |
-| A2 | RTSP frame grabber and ingest worker | ⬜ |
-| A3 | Frame selection: sharp, new, informative | ⬜ |
-| A4 | Enhancement of dark and blurry frames (bonus) | ⬜ |
-| A5 | OCR in English, French and Arabic | ⬜ |
-| A6 | Object detection with position words | ⬜ |
-| A7 | Embeddings and frame storage | ⬜ |
-| A8 | Search by time and by meaning, frames/search API | ⬜ |
-| A9 | Face blurring and retention | ⬜ |
-| A10 | Dashboard Timeline, Frame detail and Search pages | ⬜ |
-| A11 | Closed-door / stairs warning detector (bonus) | ⬜ |
-| A12 | Search-quality and speed evaluation | ⬜ |
-| A13 | Dashboard Live page (WHEP player) | ⬜ |
+| A0 | Environment setup, review of the shared skeleton | ✅ |
+| A1 | PostgreSQL + pgvector, `frames` schema, repository layer | ✅ |
+| A2 | RTSP frame grabber and ingest worker | ✅ |
+| A3 | Frame selection: sharp, new, informative | ✅ |
+| A4 | Enhancement of dark and blurry frames (bonus) | ✅ |
+| A5 | OCR in English, French and Arabic | ✅ |
+| A6 | Object detection with position words | ✅ |
+| A7 | Embeddings and frame storage | ✅ |
+| A8 | Search by time and by meaning, frames/search API | ✅ |
+| A9 | Face blurring and retention | ✅ |
+| A10 | Dashboard Timeline, Frame detail and Search pages | ✅ |
+| A11 | Closed-door / stairs warning detector (bonus) | ✅ |
+| A12 | Search-quality and speed evaluation | ✅ |
+| A13 | Dashboard Live page (WHEP player) | ✅ |
 
 ## Student B — Voice and Streaming lead
 

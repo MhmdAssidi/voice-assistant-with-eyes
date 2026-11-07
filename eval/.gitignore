@@ -1,0 +1,5 @@
+# Recorded walks are large and may show people: never commit them.
+samples/*.mp4
+samples/*.mov
+samples/*.avi
+__pycache__/
