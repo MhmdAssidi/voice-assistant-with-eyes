@@ -67,7 +67,11 @@ class FakeOcr:
 
 
 class FakeDetector:
+    def __init__(self) -> None:
+        self.seen: list[np.ndarray] = []  # the images YOLO was given
+
     def detect(self, image) -> list[DetectedObject]:
+        self.seen.append(image)
         return [DOOR]
 
 
@@ -140,3 +144,23 @@ def test_database_error_leaves_no_orphan_files(pipeline, frames_dir, monkeypatch
     with pytest.raises(RuntimeError):
         pipe.process(GrabbedFrame(1, datetime.now(UTC), scenes.exit_sign()))
     assert list(frames_dir.rglob("*.jpg")) == []
+
+
+def test_dark_frame_is_enhanced_before_reading_and_storing(pipeline, frames_dir) -> None:
+    """A4: OCR/CLIP/the JPEG get the brightened frame; YOLO gets the original."""
+    pipe, _ = pipeline
+    dark = scenes.darkened(scenes.exit_sign(), 0.2)  # brightness ~23: dark, but kept by A3
+    assert pipe.process(GrabbedFrame(1, datetime.now(UTC), dark)) is True
+
+    row = repo.list_frames()[0]
+    assert row.enhanced is True
+    assert row.brightness < settings.dark_brightness  # measured before enhancement
+    stored = cv2.imread(str(frames_dir / row.image_path), cv2.IMREAD_GRAYSCALE)
+    assert stored.mean() > 2 * cv2.cvtColor(dark, cv2.COLOR_BGR2GRAY).mean()
+    assert pipe.detector.seen[-1] is dark
+
+
+def test_bright_frame_is_not_enhanced(pipeline) -> None:
+    pipe, _ = pipeline
+    pipe.process(GrabbedFrame(1, datetime.now(UTC), scenes.exit_sign()))
+    assert repo.list_frames()[0].enhanced is False
