@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../l10n/strings.dart';
 import '../services/api_client.dart';
 import '../services/audio_service.dart';
+import '../services/events_service.dart';
 import '../services/settings_service.dart';
 import '../services/stream_service.dart';
 import '../services/tts_service.dart';
@@ -25,6 +26,9 @@ class AppState extends ChangeNotifier {
     CameraStreamer? streamer,
     QuestionRecorder? recorder,
     Speaker? speaker,
+    WarningSource? warnings,
+    WarningBuzzer? buzzer,
+    DateTime Function()? clock,
     this.healthCheckInterval = const Duration(seconds: 5),
     this.maxRecording = const Duration(seconds: 10),
     this.minRecording = const Duration(milliseconds: 700),
@@ -32,8 +36,12 @@ class AppState extends ChangeNotifier {
         _api = api ?? ApiClient(),
         _streamer = streamer ?? WhipStreamService(),
         _recorder = recorder ?? MicRecorder(),
-        _speaker = speaker ?? PhoneSpeaker() {
+        _speaker = speaker ?? PhoneSpeaker(),
+        _warnings = warnings ?? EventsService(),
+        _buzzer = buzzer ?? PhoneBuzzer(),
+        _clock = clock ?? DateTime.now {
     _streamer.status.addListener(_onCameraStatusChanged);
+    _warningSubscription = _warnings.warnings.listen(_onWarning);
   }
 
   final SettingsService _settingsService;
@@ -41,7 +49,17 @@ class AppState extends ChangeNotifier {
   final CameraStreamer _streamer;
   final QuestionRecorder _recorder;
   final Speaker _speaker;
+  final WarningSource _warnings;
+  final WarningBuzzer _buzzer;
+  final DateTime Function() _clock;
+  late final StreamSubscription<HazardWarning> _warningSubscription;
   final Duration healthCheckInterval;
+
+  /// The same kind of warning is spoken at most once per this time (B12): the
+  /// worker already waits between warnings, but a staircase seen while walking
+  /// must not be repeated every few steps.
+  static const warningCooldown = Duration(seconds: 20);
+  final Map<String, DateTime> _lastWarned = {};
 
   /// Recording stops by itself after this (questions are short).
   final Duration maxRecording;
@@ -122,6 +140,7 @@ class AppState extends ChangeNotifier {
     _healthTimer?.cancel();
     _healthTimer = null;
     if (_status == AppStatus.listening) await _finishRecording(send: false);
+    await _warnings.stop();
     await _streamer.stop();
   }
 
@@ -145,7 +164,10 @@ class AppState extends ChangeNotifier {
     // Server found: start the camera (does nothing if it already streams
     // there; if the connection drops, the streamer reconnects by itself).
     // (_paused: this check may have started just before the app went away.)
-    if (reachable && !_paused) unawaited(_streamer.start(host));
+    if (reachable && !_paused) {
+      unawaited(_streamer.start(host));
+      _warnings.start(host); // spoken warnings (B12); also does nothing if already there
+    }
     // Never interrupt a question in progress.
     if (_isIdle) _setStatus(reachable ? AppStatus.ready : AppStatus.offline);
   }
@@ -262,6 +284,33 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// A hazard from Student A's worker (A11): a distinct vibration, then one short
+  /// sentence in the app's language. Never while the user is asking (it would be
+  /// recorded) or while an answer is read; such a warning is dropped, not kept for
+  /// later, because by then the user has moved and it may no longer be true.
+  void _onWarning(HazardWarning warning) {
+    if (_paused || _status == AppStatus.listening || _status == AppStatus.speaking) {
+      debugPrint('[warning] ${warning.kind} skipped: busy (${_status.name}, paused=$_paused)');
+      return;
+    }
+    final now = _clock();
+    final last = _lastWarned[warning.kind];
+    if (last != null && now.difference(last) < warningCooldown) {
+      debugPrint('[warning] ${warning.kind} skipped: said ${now.difference(last).inSeconds} s ago');
+      return;
+    }
+    _lastWarned[warning.kind] = now;
+    debugPrint('[warning] ${warning.kind} spoken');
+
+    final message = switch (warning.kind) {
+      'stairs' => strings.warningStairs,
+      _ => strings.warningClosedDoor,
+    };
+    onAnnounce?.call(message);
+    unawaited(_buzzer.buzz());
+    unawaited(_speaker.speak(message, _settings.language));
+  }
+
   void _setStatus(AppStatus status, {bool announce = true}) {
     if (status == _status) return;
     _status = status;
@@ -281,6 +330,8 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _healthTimer?.cancel();
     _autoStop?.cancel();
+    unawaited(_warningSubscription.cancel());
+    unawaited(_warnings.stop());
     unawaited(_speaker.stop());
     _streamer.status.removeListener(_onCameraStatusChanged);
     unawaited(_streamer.stop());
