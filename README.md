@@ -51,6 +51,21 @@ npm install
 npm run dev
 ```
 
+## Evaluation
+
+Student A's part (remembering and finding what the camera saw) is measured in [`eval/`](eval/README.md). Every test frame goes through the real pipeline and is then searched with 44 questions in English, French and Arabic:
+
+| | Result |
+| --- | --- |
+| Right frame first (Recall@1) | **0.84** (English 0.94, French 0.91, Arabic 0.60) |
+| Right frame in the top 3 | 0.92 |
+| Unanswerable question, yet "confident" | **0 of 7** (the assistant says "I'm not sure") |
+| OCR on signs | 80% of words read; a sign at 8% light read perfectly thanks to enhancement |
+| Stairs / closed-door warnings | 4/4 and 3/3 found, 0 false alarms |
+| Time per stored frame / per search | ~2 s (mostly OCR) / 25 ms |
+
+Full tables, method and known weaknesses: [eval/README.md](eval/README.md). Run it with `python ../eval/run_eval.py` from `backend/`.
+
 ## Team
 
 | Student | Role | Owns |

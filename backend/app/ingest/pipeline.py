@@ -43,6 +43,8 @@ class Pipeline:
         self.faces = faces or FaceBlurrer()
         self.hazards = hazards or HazardDetector(self.embedder)
         self.notifier = notifier  # None: store without sending events (tests, scripts)
+        self.last_timings: dict[str, int] = {}  # ms per stage of the last stored frame (A12)
+        self.last_frame_id: int | None = None
 
     def process(self, frame: GrabbedFrame) -> bool:
         """Analyse one sampled frame; True if it was kept and stored."""
@@ -120,6 +122,7 @@ class Pipeline:
             raise
         lap("store")
 
+        self.last_timings, self.last_frame_id = ms, frame_id
         if self.notifier is not None:
             summary = repo.get_frame(frame_id).to_summary()
             self.notifier.post("frame_stored", summary.model_dump(mode="json"))

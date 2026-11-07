@@ -106,9 +106,9 @@ def test_question_words_for_ocr() -> None:
 
 def test_score_formula() -> None:
     # perfect content, captured right now -> 1.0
-    assert search.score_frame(0.31, 0.92, 1, 1, age_s=0).total == pytest.approx(1.0)
+    assert search.score_frame(0.31, 0.97, 1, 1, age_s=0).total == pytest.approx(1.0)
     # same frame 10 min old: recency exp(-1)
-    parts = search.score_frame(0.31, 0.92, 1, 1, age_s=600)
+    parts = search.score_frame(0.31, 0.97, 1, 1, age_s=600)
     assert parts.recency == pytest.approx(np.exp(-1))
     assert parts.total == pytest.approx(0.85 + 0.15 * np.exp(-1))
     # half the question words read on the sign

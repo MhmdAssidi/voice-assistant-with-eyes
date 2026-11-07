@@ -1,0 +1,945 @@
+{
+  "generated": "2026-11-07 15:09",
+  "machine": "Windows AMD64, Python 3.11.9",
+  "model_load_s": 26.0,
+  "builtin": {
+    "frames": {
+      "exit_en": "drawn",
+      "exit_en_dark": "drawn, 8% light",
+      "sortie_fr": "drawn",
+      "exit_ar": "drawn",
+      "pharmacy": "drawn",
+      "elevator": "drawn",
+      "toilets": "drawn",
+      "room105": "drawn",
+      "cafeteria": "drawn",
+      "living_room": "COCO val2017 #139",
+      "bedroom": "COCO val2017 #632",
+      "kitchen": "COCO val2017 #802",
+      "stop_sign": "COCO val2017 #724 (upside down)",
+      "kids_tennis": "COCO val2017 #1000",
+      "skier": "COCO val2017 #785",
+      "street_bus": "ultralytics bus.jpg",
+      "two_men": "ultralytics zidane.jpg",
+      "stairs_down": "Wikimedia Commons",
+      "stairs_spiral": "Wikimedia Commons",
+      "stairs_up": "Wikimedia Commons",
+      "stairs_metal": "Wikimedia Commons",
+      "door_blue": "Wikimedia Commons",
+      "door_padlock": "Wikimedia Commons",
+      "door_carved": "Wikimedia Commons"
+    },
+    "search": {
+      "overall": {
+        "questions": 44,
+        "answerable": 37,
+        "recall@1": 0.838,
+        "recall@3": 0.919,
+        "mrr": 0.875,
+        "right_and_confident": 0.838,
+        "unanswerable_wrongly_confident": 0.0
+      },
+      "by_language": {
+        "ar": {
+          "questions": 12,
+          "answerable": 10,
+          "recall@1": 0.6,
+          "recall@3": 0.8,
+          "mrr": 0.687,
+          "right_and_confident": 0.6,
+          "unanswerable_wrongly_confident": 0.0
+        },
+        "en": {
+          "questions": 19,
+          "answerable": 16,
+          "recall@1": 0.938,
+          "recall@3": 0.938,
+          "mrr": 0.938,
+          "right_and_confident": 0.938,
+          "unanswerable_wrongly_confident": 0.0
+        },
+        "fr": {
+          "questions": 13,
+          "answerable": 11,
+          "recall@1": 0.909,
+          "recall@3": 1.0,
+          "mrr": 0.955,
+          "right_and_confident": 0.909,
+          "unanswerable_wrongly_confident": 0.0
+        }
+      },
+      "ablation": {
+        "full (0.5 image + 0.3 text + 0.2 OCR)": {
+          "questions": 44,
+          "answerable": 37,
+          "recall@1": 0.838,
+          "recall@3": 0.919,
+          "mrr": 0.875,
+          "right_and_confident": 0.838,
+          "unanswerable_wrongly_confident": 0.0
+        },
+        "picture only (CLIP image)": {
+          "questions": 44,
+          "answerable": 37,
+          "recall@1": 0.784,
+          "recall@3": 0.865,
+          "mrr": 0.824,
+          "right_and_confident": 0.784,
+          "unanswerable_wrongly_confident": 0.143
+        },
+        "caption only (CLIP text)": {
+          "questions": 44,
+          "answerable": 37,
+          "recall@1": 0.351,
+          "recall@3": 0.459,
+          "mrr": 0.396,
+          "right_and_confident": 0.324,
+          "unanswerable_wrongly_confident": 0.286
+        },
+        "OCR words only": {
+          "questions": 44,
+          "answerable": 37,
+          "recall@1": 0.324,
+          "recall@3": 0.324,
+          "mrr": 0.324,
+          "right_and_confident": 0.324,
+          "unanswerable_wrongly_confident": 0.0
+        },
+        "no OCR (0.6 image + 0.4 text)": {
+          "questions": 44,
+          "answerable": 37,
+          "recall@1": 0.784,
+          "recall@3": 0.838,
+          "mrr": 0.816,
+          "right_and_confident": 0.784,
+          "unanswerable_wrongly_confident": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 25.5,
+        "median": 25.3,
+        "p95": 28.6
+      },
+      "questions": [
+        {
+          "query": "What did the exit sign say?",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "exit_en",
+          "top_score": 0.821,
+          "top_matched_by": [
+            "image",
+            "text",
+            "ocr"
+          ]
+        },
+        {
+          "query": "Room 204",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "exit_en_dark",
+          "top_score": 0.838,
+          "top_matched_by": [
+            "image",
+            "text",
+            "ocr"
+          ]
+        },
+        {
+          "query": "Where is the pharmacy?",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "pharmacy",
+          "top_score": 0.452,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "elevator",
+          "language": "en",
+          "answerable": true,
+          "rank": null,
+          "top": "sortie_fr",
+          "top_score": 0.332,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "toilets",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "toilets",
+          "top_score": 0.639,
+          "top_matched_by": [
+            "image",
+            "text"
+          ]
+        },
+        {
+          "query": "Dr. Haddad's office",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "room105",
+          "top_score": 0.7,
+          "top_matched_by": [
+            "image",
+            "ocr"
+          ]
+        },
+        {
+          "query": "When does the cafeteria open?",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "cafeteria",
+          "top_score": 0.588,
+          "top_matched_by": [
+            "image",
+            "ocr"
+          ]
+        },
+        {
+          "query": "stairs",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "stairs_down",
+          "top_score": 0.521,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "a closed door",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "door_blue",
+          "top_score": 0.48,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "a living room with a TV",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "living_room",
+          "top_score": 0.388,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "a bedroom with a bookshelf",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "bedroom",
+          "top_score": 0.54,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "a kitchen with a refrigerator",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "kitchen",
+          "top_score": 0.59,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "a stop sign",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "stop_sign",
+          "top_score": 0.711,
+          "top_matched_by": [
+            "image",
+            "text"
+          ]
+        },
+        {
+          "query": "a bus in the street",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "street_bus",
+          "top_score": 0.496,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "children playing tennis",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "kids_tennis",
+          "top_score": 0.461,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "someone skiing",
+          "language": "en",
+          "answerable": true,
+          "rank": 1,
+          "top": "skier",
+          "top_score": 0.536,
+          "top_matched_by": [
+            "image",
+            "text"
+          ]
+        },
+        {
+          "query": "a plate of spaghetti",
+          "language": "en",
+          "answerable": false,
+          "rank": null,
+          "top": null,
+          "top_score": 0.0,
+          "top_matched_by": []
+        },
+        {
+          "query": "a dog on the beach",
+          "language": "en",
+          "answerable": false,
+          "rank": null,
+          "top": null,
+          "top_score": 0.0,
+          "top_matched_by": []
+        },
+        {
+          "query": "a swimming pool",
+          "language": "en",
+          "answerable": false,
+          "rank": null,
+          "top": "stairs_down",
+          "top_score": 0.166,
+          "top_matched_by": []
+        },
+        {
+          "query": "Qu'est-ce qui était écrit sur le panneau de sortie ?",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "sortie_fr",
+          "top_score": 0.436,
+          "top_matched_by": [
+            "image",
+            "ocr"
+          ]
+        },
+        {
+          "query": "pharmacie",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "pharmacy",
+          "top_score": 0.731,
+          "top_matched_by": [
+            "image",
+            "ocr"
+          ]
+        },
+        {
+          "query": "Où est l'ascenseur ?",
+          "language": "fr",
+          "answerable": true,
+          "rank": 2,
+          "top": "exit_en_dark",
+          "top_score": 0.365,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "les toilettes",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "toilets",
+          "top_score": 0.734,
+          "top_matched_by": [
+            "image",
+            "text",
+            "ocr"
+          ]
+        },
+        {
+          "query": "salle 105",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "room105",
+          "top_score": 0.492,
+          "top_matched_by": [
+            "image",
+            "ocr"
+          ]
+        },
+        {
+          "query": "Où est l'escalier ?",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "sortie_fr",
+          "top_score": 0.492,
+          "top_matched_by": [
+            "text",
+            "ocr"
+          ]
+        },
+        {
+          "query": "une porte fermée",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "door_carved",
+          "top_score": 0.397,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "un salon avec une télévision",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "living_room",
+          "top_score": 0.358,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "une cuisine",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "kitchen",
+          "top_score": 0.315,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "un bus dans la rue",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "street_bus",
+          "top_score": 0.49,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "quelqu'un qui fait du ski",
+          "language": "fr",
+          "answerable": true,
+          "rank": 1,
+          "top": "skier",
+          "top_score": 0.532,
+          "top_matched_by": [
+            "image",
+            "text"
+          ]
+        },
+        {
+          "query": "un chat sur le canapé",
+          "language": "fr",
+          "answerable": false,
+          "rank": null,
+          "top": "bedroom",
+          "top_score": 0.175,
+          "top_matched_by": []
+        },
+        {
+          "query": "une voiture rouge",
+          "language": "fr",
+          "answerable": false,
+          "rank": null,
+          "top": "stop_sign",
+          "top_score": 0.22,
+          "top_matched_by": []
+        },
+        {
+          "query": "شو مكتوب على لافتة المخرج؟",
+          "language": "ar",
+          "answerable": true,
+          "rank": 1,
+          "top": "exit_ar",
+          "top_score": 0.356,
+          "top_matched_by": [
+            "ocr"
+          ]
+        },
+        {
+          "query": "الطابق الأول",
+          "language": "ar",
+          "answerable": true,
+          "rank": 3,
+          "top": "stairs_up",
+          "top_score": 0.412,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "صيدلية",
+          "language": "ar",
+          "answerable": true,
+          "rank": 1,
+          "top": "pharmacy",
+          "top_score": 0.334,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "وين المصعد؟",
+          "language": "ar",
+          "answerable": true,
+          "rank": null,
+          "top": "exit_en_dark",
+          "top_score": 0.379,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "درج",
+          "language": "ar",
+          "answerable": true,
+          "rank": 5,
+          "top": "two_men",
+          "top_score": 0.306,
+          "top_matched_by": [
+            "text"
+          ]
+        },
+        {
+          "query": "باب مغلق",
+          "language": "ar",
+          "answerable": true,
+          "rank": 1,
+          "top": "door_carved",
+          "top_score": 0.366,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "غرفة جلوس فيها تلفاز",
+          "language": "ar",
+          "answerable": true,
+          "rank": 3,
+          "top": "exit_en_dark",
+          "top_score": 0.367,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "مطبخ",
+          "language": "ar",
+          "answerable": true,
+          "rank": 1,
+          "top": "kitchen",
+          "top_score": 0.296,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "حافلة في الشارع",
+          "language": "ar",
+          "answerable": true,
+          "rank": 1,
+          "top": "street_bus",
+          "top_score": 0.436,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "أطفال يلعبون التنس",
+          "language": "ar",
+          "answerable": true,
+          "rank": 1,
+          "top": "kids_tennis",
+          "top_score": 0.492,
+          "top_matched_by": [
+            "image"
+          ]
+        },
+        {
+          "query": "طائرة في السماء",
+          "language": "ar",
+          "answerable": false,
+          "rank": null,
+          "top": "two_men",
+          "top_score": 0.186,
+          "top_matched_by": []
+        },
+        {
+          "query": "قطة",
+          "language": "ar",
+          "answerable": false,
+          "rank": null,
+          "top": "two_men",
+          "top_score": 0.187,
+          "top_matched_by": []
+        }
+      ]
+    },
+    "ocr": {
+      "signs": [
+        {
+          "item": "exit_en",
+          "truth": "EXIT Room 204",
+          "read": "EXIT Room 204",
+          "word_recall": 1.0,
+          "cer": 0.0
+        },
+        {
+          "item": "exit_en_dark",
+          "truth": "EXIT Room 204",
+          "read": "EXIT Room 204",
+          "word_recall": 1.0,
+          "cer": 0.0
+        },
+        {
+          "item": "sortie_fr",
+          "truth": "Sortie Escalier",
+          "read": "Sortie Escalier",
+          "word_recall": 1.0,
+          "cer": 0.0
+        },
+        {
+          "item": "exit_ar",
+          "truth": "مخرج الطابق الأول",
+          "read": "مخرج الطابق الأول",
+          "word_recall": 1.0,
+          "cer": 0.0
+        },
+        {
+          "item": "pharmacy",
+          "truth": "PHARMACIE صيدلية",
+          "read": "PHARMACIE 4112",
+          "word_recall": 0.5,
+          "cer": 0.375
+        },
+        {
+          "item": "elevator",
+          "truth": "ASCENSEUR مصعد",
+          "read": "ASCENSEUR مصعل",
+          "word_recall": 0.5,
+          "cer": 0.071
+        },
+        {
+          "item": "toilets",
+          "truth": "TOILETTES WC",
+          "read": "TOILETTES WC",
+          "word_recall": 1.0,
+          "cer": 0.0
+        },
+        {
+          "item": "room105",
+          "truth": "Salle 105 Dr. Haddad",
+          "read": "Salle 105 Dr. Haddad",
+          "word_recall": 1.0,
+          "cer": 0.0
+        },
+        {
+          "item": "cafeteria",
+          "truth": "Cafeteria 8:00 - 16:00",
+          "read": "Cafeteria 8.00 = 16:00",
+          "word_recall": 1.0,
+          "cer": 0.0
+        },
+        {
+          "item": "stop_sign",
+          "truth": "STOP",
+          "read": "d01$",
+          "word_recall": 0.0,
+          "cer": 1.0
+        }
+      ],
+      "mean_word_recall": 0.8,
+      "mean_cer": 0.145
+    },
+    "warnings": {
+      "by_kind": {
+        "stairs": {
+          "tn": 20,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "threshold": 0.5
+        },
+        "closed_door": {
+          "tn": 21,
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "threshold": 0.45
+        }
+      },
+      "frames": [
+        {
+          "item": "exit_en",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.0,
+          "closed_door": 0.163
+        },
+        {
+          "item": "exit_en_dark",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.0,
+          "closed_door": 0.14
+        },
+        {
+          "item": "sortie_fr",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.22,
+          "closed_door": 0.109
+        },
+        {
+          "item": "exit_ar",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.043,
+          "closed_door": 0.354
+        },
+        {
+          "item": "pharmacy",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.034,
+          "closed_door": 0.039
+        },
+        {
+          "item": "elevator",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.223,
+          "closed_door": 0.145
+        },
+        {
+          "item": "toilets",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.001,
+          "closed_door": 0.018
+        },
+        {
+          "item": "room105",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.014,
+          "closed_door": 0.241
+        },
+        {
+          "item": "cafeteria",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.0,
+          "closed_door": 0.043
+        },
+        {
+          "item": "living_room",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.01,
+          "closed_door": 0.003
+        },
+        {
+          "item": "bedroom",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.002,
+          "closed_door": 0.003
+        },
+        {
+          "item": "kitchen",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.003,
+          "closed_door": 0.087
+        },
+        {
+          "item": "stop_sign",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.001,
+          "closed_door": 0.039
+        },
+        {
+          "item": "kids_tennis",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.002,
+          "closed_door": 0.022
+        },
+        {
+          "item": "skier",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.093,
+          "closed_door": 0.06
+        },
+        {
+          "item": "street_bus",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.009,
+          "closed_door": 0.013
+        },
+        {
+          "item": "two_men",
+          "truth": null,
+          "predicted": [],
+          "stairs": 0.006,
+          "closed_door": 0.012
+        },
+        {
+          "item": "stairs_down",
+          "truth": "stairs",
+          "predicted": [
+            "stairs"
+          ],
+          "stairs": 0.756,
+          "closed_door": 0.019
+        },
+        {
+          "item": "stairs_spiral",
+          "truth": "stairs",
+          "predicted": [
+            "stairs"
+          ],
+          "stairs": 0.971,
+          "closed_door": 0.0
+        },
+        {
+          "item": "stairs_up",
+          "truth": "stairs",
+          "predicted": [
+            "stairs"
+          ],
+          "stairs": 0.948,
+          "closed_door": 0.009
+        },
+        {
+          "item": "stairs_metal",
+          "truth": "stairs",
+          "predicted": [
+            "stairs"
+          ],
+          "stairs": 0.978,
+          "closed_door": 0.001
+        },
+        {
+          "item": "door_blue",
+          "truth": "closed_door",
+          "predicted": [
+            "closed_door"
+          ],
+          "stairs": 0.0,
+          "closed_door": 0.575
+        },
+        {
+          "item": "door_padlock",
+          "truth": "closed_door",
+          "predicted": [
+            "closed_door"
+          ],
+          "stairs": 0.0,
+          "closed_door": 0.799
+        },
+        {
+          "item": "door_carved",
+          "truth": "closed_door",
+          "predicted": [
+            "closed_door"
+          ],
+          "stairs": 0.0,
+          "closed_door": 0.473
+        }
+      ]
+    },
+    "speed": {
+      "frames": 24,
+      "per_stage_ms": {
+        "quality": {
+          "mean": 3.3,
+          "median": 3.0,
+          "p95": 6
+        },
+        "enhance": {
+          "mean": 7.4,
+          "median": 0.0,
+          "p95": 12
+        },
+        "faces": {
+          "mean": 42.7,
+          "median": 34.0,
+          "p95": 73
+        },
+        "warnings": {
+          "mean": 84.0,
+          "median": 78.0,
+          "p95": 125
+        },
+        "ocr": {
+          "mean": 1728.0,
+          "median": 1272.5,
+          "p95": 3182
+        },
+        "objects": {
+          "mean": 72.1,
+          "median": 73.0,
+          "p95": 102
+        },
+        "embed": {
+          "mean": 20.3,
+          "median": 24.5,
+          "p95": 27
+        },
+        "store": {
+          "mean": 20.6,
+          "median": 23.0,
+          "p95": 28
+        }
+      },
+      "total_ms": {
+        "mean": 1978.4,
+        "median": 1487.5,
+        "p95": 3477
+      }
+    }
+  }
+}

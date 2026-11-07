@@ -51,14 +51,18 @@ W_CONTENT, W_RECENCY = 0.85, 0.15
 RECENCY_TAU_S = 600.0  # recency halves about every 7 minutes
 
 # Raw cosine similarities are squeezed into small ranges, so they are stretched to 0..1:
-# similarity <= low -> 0, >= high -> 1. Measured on our frames (exit signs in 3 languages,
-# a living room, a street) with 20 questions in en/fr/ar: question vs PICTURE gives
-# 0.24-0.32 for the right scene and 0.13-0.25 for the others; question vs CAPTION (text
-# to text) gives 0.77-0.91 for the right caption and 0.55-0.84 for the others.
-# These ranges were picked by grid search: every right scene ranks first and scores
-# >= 0.32 when fresh (>= 0.27 when 5 min old); unrelated questions score <= 0.24.
+# similarity <= low -> 0, >= high -> 1.
+# - Question vs PICTURE: 0.24-0.32 for the right scene, 0.13-0.25 for the others
+#   (A8, 20 questions in en/fr/ar on our walk frames).
+# - Question vs CAPTION (text to text): the multilingual text model finds ANY short
+#   question fairly close to ANY caption of the form 'a sign that says "..."' (0.78-0.89,
+#   e.g. "قطة" (cat) vs the EXIT caption: 0.80). Measured on the A12 evaluation set
+#   (eval/, 44 questions, 24 frames): with the A8 range (0.80, 0.92) unrelated questions
+#   were "confident" 29% of the time; from a low end of 0.83 upward that drops to 0%
+#   and right-first rises from 70% to 78-84% (Arabic 40% -> 60%). 0.85 is in the
+#   middle of that plateau. See eval/results/RESULTS.md.
 IMAGE_SIM_RANGE = (0.21, 0.31)
-TEXT_SIM_RANGE = (0.80, 0.92)
+TEXT_SIM_RANGE = (0.85, 0.97)
 
 MATCH_LEVEL = 0.3  # a signal at least this strong is reported in SearchHit.matched_by
 CANDIDATES_PER_INDEX = 50  # top-k taken from each index before the exact scoring
