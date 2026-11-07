@@ -10,8 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:va_mobile/main.dart';
 import 'package:va_mobile/state/app_state.dart';
 
-import 'app_state_test.dart'
-    show FakeApi, FakeBuzzer, FakeRecorder, FakeSpeaker, FakeStreamer, FakeWarnings;
+import 'app_state_test.dart' show FakeApi, FakeRecorder, FakeSpeaker, FakeStreamer;
 
 /// A small phone screen (360 x 690 dp) so 200 % text is a real test.
 void useSmallPhone(WidgetTester tester, {double textScale = 1.0}) {
@@ -34,8 +33,6 @@ Future<AppState> pumpApp(
     streamer: FakeStreamer(),
     recorder: FakeRecorder(),
     speaker: speaker ?? FakeSpeaker(),
-    warnings: FakeWarnings(),
-    buzzer: FakeBuzzer(),
   );
   await state.loadSettings();
   await state.checkServer();

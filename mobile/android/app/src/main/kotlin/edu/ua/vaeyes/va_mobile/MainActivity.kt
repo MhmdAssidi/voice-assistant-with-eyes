@@ -1,13 +1,8 @@
 package edu.ua.vaeyes.va_mobile
 
-import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
-import android.os.Build
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -44,30 +39,10 @@ class MainActivity : FlutterActivity() {
                         // No tone on this device: the vibration still gives feedback.
                     }
                     result.success(null)
-                } else if (call.method == "warn") {
-                    warningVibration()
-                    result.success(null)
                 } else {
                     result.notImplemented()
                 }
             }
-    }
-
-    // Spoken warnings (B12): two long pulses, unlike the short tap of record start/stop.
-    private fun warningVibration() {
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        }
-        val pattern = longArrayOf(0, 400, 150, 400) // wait, buzz, pause, buzz (ms)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1)) // -1 = no repeat
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(pattern, -1)
-        }
     }
 
     override fun onDestroy() {
