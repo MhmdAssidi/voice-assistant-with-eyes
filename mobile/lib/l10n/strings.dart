@@ -37,6 +37,8 @@ class AppStrings {
     required this.cameraDisconnected,
     required this.cameraConnecting,
     required this.cameraOff,
+    required this.warningClosedDoor,
+    required this.warningStairs,
   });
 
   final String appTitle;
@@ -70,6 +72,11 @@ class AppStrings {
   final String cameraDisconnected;
   final String cameraConnecting;
   final String cameraOff;
+
+  /// Spoken warnings (B12). A door warning is only a hint (Student A's detector is
+  /// less sure about doors than stairs), hence "there may be".
+  final String warningClosedDoor;
+  final String warningStairs;
 
   /// Supported languages: code -> name written in that language.
   static const languages = {'en': 'English', 'fr': 'Français', 'ar': 'العربية'};
@@ -116,6 +123,8 @@ class AppStrings {
     cameraDisconnected: 'Camera disconnected.',
     cameraConnecting: 'Connecting the camera…',
     cameraOff: 'Camera off.',
+    warningClosedDoor: 'Careful: there may be a closed door ahead.',
+    warningStairs: 'Careful: stairs ahead.',
   );
 
   static const _fr = AppStrings._(
@@ -152,6 +161,8 @@ class AppStrings {
     cameraDisconnected: 'Caméra déconnectée.',
     cameraConnecting: 'Connexion de la caméra…',
     cameraOff: 'Caméra éteinte.',
+    warningClosedDoor: 'Attention : il y a peut-être une porte fermée devant vous.',
+    warningStairs: 'Attention : escalier devant vous.',
   );
 
   static const _ar = AppStrings._(
@@ -186,5 +197,7 @@ class AppStrings {
     cameraDisconnected: 'الكاميرا غير متصلة.',
     cameraConnecting: 'جارٍ توصيل الكاميرا…',
     cameraOff: 'الكاميرا متوقفة.',
+    warningClosedDoor: 'انتبه: قد يكون هناك باب مغلق أمامك.',
+    warningStairs: 'انتبه: يوجد درج أمامك.',
   );
 }
