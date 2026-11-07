@@ -19,6 +19,7 @@ from app.memory import files
 from app.memory import repository as repo
 from app.memory.embeddings import DIM, build_caption
 from app.vision.faces import Blurred
+from app.vision.hazards import Hazard
 from app.vision.ocr import OcrResult
 from tests.vision import scenes
 
@@ -93,6 +94,13 @@ class FakeFaces:
         return Blurred(result, [(0, 0, 50, 50)])
 
 
+class FakeHazards:
+    """Sees stairs in every frame (the real CLIP check is tested in tests/vision)."""
+
+    def check(self, image_emb, captured_at) -> list[Hazard]:
+        return [Hazard("stairs", 0.9)]
+
+
 class FakeNotifier:
     def __init__(self) -> None:
         self.events: list[tuple[str, dict]] = []
@@ -106,7 +114,7 @@ class FakeNotifier:
 def pipeline(clean_frames, frames_dir):
     notifier = FakeNotifier()
     return Pipeline(ocr=FakeOcr(), detector=FakeDetector(), embedder=FakeEmbedder(),
-                    notifier=notifier, faces=FakeFaces()), notifier
+                    notifier=notifier, faces=FakeFaces(), hazards=FakeHazards()), notifier
 
 
 def test_kept_frame_is_stored_with_files_row_and_event(pipeline, frames_dir) -> None:
@@ -126,8 +134,8 @@ def test_kept_frame_is_stored_with_files_row_and_event(pipeline, frames_dir) -> 
     assert row.image_emb[0] == 1.0 and row.text_emb[1] == 1.0
     assert (frames_dir / row.image_path).exists() and (frames_dir / row.thumb_path).exists()
 
-    # frame_stored event carries a contract FrameSummary
-    event_type, data = notifier.events[0]
+    # frame_stored event carries a contract FrameSummary (after the A11 warning)
+    event_type, data = notifier.events[-1]
     assert event_type == "frame_stored"
     summary = FrameSummary(**data)
     assert summary.id == row.id
@@ -141,7 +149,7 @@ def test_rejected_frames_store_nothing(pipeline) -> None:
     assert pipe.process(GrabbedFrame(2, t0 + timedelta(seconds=1), scenes.exit_sign())) is False
     assert pipe.process(GrabbedFrame(3, t0, scenes.blurred(scenes.boxes(), 4))) is False
     assert repo.count_frames() == 1
-    assert len(notifier.events) == 1
+    assert [e[0] for e in notifier.events] == ["warning", "frame_stored"]  # nothing for rejects
 
 
 def test_database_error_leaves_no_orphan_files(pipeline, frames_dir, monkeypatch) -> None:
@@ -186,3 +194,14 @@ def test_stored_image_has_the_faces_blurred(pipeline, frames_dir) -> None:
     blue, green, red = stored[10:40, 10:40].reshape(-1, 3).mean(axis=0)
     assert blue > 200 and red > 200 and green < 60  # magenta: the blurred version
     assert pipe.detector.seen[-1] is original
+
+
+def test_warning_is_sent_before_the_slow_steps_and_points_to_the_frame(pipeline) -> None:
+    """A11: the phone hears "stairs" before OCR even starts; the warning names the frame."""
+    pipe, notifier = pipeline
+    assert pipe.process(GrabbedFrame(1, datetime.now(UTC), scenes.exit_sign())) is True
+
+    (first, warning), (second, stored) = notifier.events
+    assert (first, second) == ("warning", "frame_stored")
+    assert warning == {"kind": "stairs", "confidence": 0.9, "frame_id": stored["id"],
+                       "position": "center"}

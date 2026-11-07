@@ -87,6 +87,14 @@ class Embedder:
         vector = self.image_model.encode(rgb, normalize_embeddings=True, convert_to_numpy=True)
         return vector.astype(np.float32)
 
+    def embed_prompts(self, texts: list[str]) -> np.ndarray:
+        """English CLIP text vectors (the image model's own text side), for zero-shot
+        classification of frames (A11 warnings). Shape (len(texts), 512), unit length."""
+        if self.image_model is None:
+            raise RuntimeError("This Embedder was created without the image model")
+        vectors = self.image_model.encode(texts, normalize_embeddings=True, convert_to_numpy=True)
+        return vectors.astype(np.float32)
+
     def embed_text(self, text: str) -> np.ndarray:
         """512-dim unit vector for a caption or a question, in any of our languages."""
         vector = self.text_model.encode(text, normalize_embeddings=True, convert_to_numpy=True)
