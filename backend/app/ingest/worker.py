@@ -5,7 +5,8 @@ Run from backend/ (MediaMTX must be running, the API is optional):
     python -m app.ingest.worker --source ../eval/samples/walk.mp4
 
 Samples the newest stream frame ~5 times per second, runs it through the
-pipeline, and posts an ingest_status event every 2 s. Stop with Ctrl+C.
+pipeline, and posts an ingest_status event every 2 s. Frames older than
+RETENTION_MINUTES are deleted at start and every minute (A9). Stop with Ctrl+C.
 """
 
 import argparse
@@ -18,6 +19,7 @@ from app.config import settings
 from app.ingest.grabber import FrameGrabber
 from app.ingest.notifier import EventNotifier
 from app.ingest.pipeline import Pipeline
+from app.memory.retention import RetentionJob
 
 log = logging.getLogger("worker")
 
@@ -51,11 +53,13 @@ class IngestWorker:
         source: str,
         pipeline: Pipeline | None = None,
         notifier: EventNotifier | None = None,
+        retention: RetentionJob | None = None,
     ) -> None:
         self.grabber = FrameGrabber(source, reconnect_s=settings.rtsp_reconnect_s)
         self.notifier = notifier or EventNotifier(settings.api_internal_url)
         # Loads the AI models once (OCR, YOLO, CLIP: ~30 s); the pipeline posts frame_stored
         self.pipeline = pipeline or Pipeline(notifier=self.notifier)
+        self.retention = retention or RetentionJob()  # privacy: forget old frames (A9)
         self.stats = IngestStats()
         self.running = False
         self._stop = threading.Event()
@@ -98,6 +102,7 @@ class IngestWorker:
         log.info("Ingest worker starting: source=%s, %.0f fps", self.grabber.source,
                  settings.ingest_fps)
         self.running = True
+        self.retention.start()
         self.grabber.start()
         threading.Thread(target=self._status_loop, name="status", daemon=True).start()
 
@@ -121,6 +126,7 @@ class IngestWorker:
     def stop(self) -> None:
         self._stop.set()
         self.running = False
+        self.retention.stop()
         self.grabber.stop()
         self.notifier.post("ingest_status", self.status_data())  # tell the dashboard we stopped
         self.notifier.close()
