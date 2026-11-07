@@ -18,6 +18,7 @@ from app.ingest.pipeline import Pipeline
 from app.memory import files
 from app.memory import repository as repo
 from app.memory.embeddings import DIM, build_caption
+from app.vision.faces import Blurred
 from app.vision.ocr import OcrResult
 from tests.vision import scenes
 
@@ -83,6 +84,15 @@ class FakeEmbedder:
         return np.eye(DIM, dtype=np.float32)[1]
 
 
+class FakeFaces:
+    """Paints a magenta square where a face would be, so the test can see the blur."""
+
+    def blur(self, image) -> Blurred:
+        result = image.copy()
+        result[:50, :50] = (255, 0, 255)
+        return Blurred(result, [(0, 0, 50, 50)])
+
+
 class FakeNotifier:
     def __init__(self) -> None:
         self.events: list[tuple[str, dict]] = []
@@ -96,7 +106,7 @@ class FakeNotifier:
 def pipeline(clean_frames, frames_dir):
     notifier = FakeNotifier()
     return Pipeline(ocr=FakeOcr(), detector=FakeDetector(), embedder=FakeEmbedder(),
-                    notifier=notifier), notifier
+                    notifier=notifier, faces=FakeFaces()), notifier
 
 
 def test_kept_frame_is_stored_with_files_row_and_event(pipeline, frames_dir) -> None:
@@ -164,3 +174,15 @@ def test_bright_frame_is_not_enhanced(pipeline) -> None:
     pipe, _ = pipeline
     pipe.process(GrabbedFrame(1, datetime.now(UTC), scenes.exit_sign()))
     assert repo.list_frames()[0].enhanced is False
+
+
+def test_stored_image_has_the_faces_blurred(pipeline, frames_dir) -> None:
+    """A9: the JPEG on disk is the blurred one; YOLO alone saw the original (not stored)."""
+    pipe, _ = pipeline
+    original = scenes.exit_sign()
+    assert pipe.process(GrabbedFrame(1, datetime.now(UTC), original)) is True
+
+    stored = cv2.imread(str(frames_dir / repo.list_frames()[0].image_path))
+    blue, green, red = stored[10:40, 10:40].reshape(-1, 3).mean(axis=0)
+    assert blue > 200 and red > 200 and green < 60  # magenta: the blurred version
+    assert pipe.detector.seen[-1] is original

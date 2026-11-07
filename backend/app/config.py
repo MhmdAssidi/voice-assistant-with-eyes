@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     yolo_model: str = "yolov8n.pt"  # n = nano: the smallest, fast enough on a laptop CPU
     detect_min_confidence: float = 0.4  # objects below this are dropped
     near_area: float = 0.25  # box covering more than this share of the frame = "near"
+    # Privacy (A9). Faces are pixelated before storing; frames older than
+    # RETENTION_MINUTES (above) are deleted, rows and files, every RETENTION_CHECK_S.
+    face_min_confidence: float = 0.5  # low on purpose: a missed face is worse than extra blur
+    retention_check_s: float = 60.0
 
     # ---------- Student B section ----------
     vlm_provider: str = "gemini"  # gemini | ollama

@@ -1,8 +1,8 @@
 """Per-frame processing pipeline: the "Remember" step (owner: Student A).
 
 Order: quality -> enhance -> face blur -> OCR -> objects -> embed -> store -> warnings.
-Done: quality (A3), enhance (A4), OCR (A5), objects (A6), embed + store (A7).
-Coming in Week 4: face blur (A9), warnings (A11).
+Done: quality (A3), enhance (A4), OCR (A5), objects (A6), embed + store (A7), face blur (A9).
+Coming in Week 4: warnings (A11).
 The heavy models are passed in (or loaded once here), never per frame.
 """
 
@@ -16,6 +16,7 @@ from app.memory import repository as repo
 from app.memory.embeddings import Embedder, build_caption
 from app.vision.detect import ObjectDetector
 from app.vision.enhance import enhance
+from app.vision.faces import FaceBlurrer
 from app.vision.ocr import OcrEngine
 from app.vision.quality import FrameSelector, measure
 
@@ -30,11 +31,13 @@ class Pipeline:
         detector: ObjectDetector | None = None,
         embedder: Embedder | None = None,
         notifier: EventNotifier | None = None,
+        faces: FaceBlurrer | None = None,
     ) -> None:
         self.selector = selector or FrameSelector()
         self.ocr = ocr or OcrEngine()
         self.detector = detector or ObjectDetector()
         self.embedder = embedder or Embedder()
+        self.faces = faces or FaceBlurrer()
         self.notifier = notifier  # None: store without sending events (tests, scripts)
 
     def process(self, frame: GrabbedFrame) -> bool:
@@ -56,16 +59,22 @@ class Pipeline:
         lap("quality")
 
         # A4: a dark frame is brightened; OCR, CLIP, the stored JPEG (and so the dashboard
-        # and the VLM) all use the enhanced image. A9 (face blur) will also change it here.
+        # and the VLM) all use the enhanced image.
         enhanced = enhance(image, quality.brightness)
         image = enhanced.image
         lap("enhance")
+        # A9: faces are pixelated before anything is stored or sent anywhere (privacy).
+        # Detected on the enhanced image: faces in the dark are found more easily.
+        blurred = self.faces.blur(image)
+        image = blurred.image
+        lap("faces")
 
         ocr = self.ocr.read(image)
         lap("ocr")
         # YOLO reads the ORIGINAL frame: it was trained with brightness changes, and on our
         # dark test photos the enhanced image made it find fewer objects (A4 measurements).
-        # Same size, so its boxes still fit the stored enhanced image.
+        # Same size, so its boxes still fit the stored image. The original is never stored:
+        # only labels and boxes come out of YOLO, no face.
         objects = self.detector.detect(frame.image)
         lap("objects")
         caption = build_caption(ocr.text, objects)
@@ -103,8 +112,8 @@ class Pipeline:
             summary = repo.get_frame(frame_id).to_summary()
             self.notifier.post("frame_stored", summary.model_dump(mode="json"))
         log.info(
-            "Stored frame %d (%s) caption=%r | %s",
-            frame_id, decision.reason, caption,
+            "Stored frame %d (%s, %d face(s) blurred) caption=%r | %s",
+            frame_id, decision.reason, len(blurred.faces), caption,
             " ".join(f"{stage}={value}ms" for stage, value in ms.items()),
         )
         return True
