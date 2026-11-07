@@ -90,6 +90,25 @@ def test_is_confident(model_confident, question, scores, latest, expected) -> No
     assert uncertainty.is_confident(model_confident, question, scores, latest, 0.25) is expected
 
 
+@pytest.mark.parametrize(
+    ("question", "live"),
+    [
+        ("What is in front of me?", True),
+        ("What's ahead?", True),
+        ("Qu'est-ce qu'il y a devant moi ?", True),  # "il y a" = there is, not past
+        ("ماذا يوجد أمامي؟", True),
+        ("What was in front of me before?", False),  # real test question
+        ("What did I just passed?", False),
+        ("Qu'est-ce qu'il y avait devant moi avant ?", False),
+        ("ماذا كان يوجد في السابق أمامي؟", False),  # real Whisper transcript
+        ("ماذا كان يوجد في الصابق أمامي؟", False),  # Whisper misspelling (ص)
+        ("What does the sign say?", False),
+    ],
+)
+def test_live_or_past_question(question: str, live: bool) -> None:
+    assert uncertainty.is_live_question(question) is live
+
+
 def test_answers_are_cut_to_two_sentences() -> None:
     text, _ = uncertainty.apply_rules(
         "One. Two. Three. Four.", True, "en", "What is in front of me?", [0.9], True

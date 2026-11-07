@@ -23,6 +23,7 @@ or guess anything that is not visible.
 6. If the photos do not clearly show the answer, set "confident" to false and \
 start the answer by saying you are not sure.
 7. For questions about what is in front of the user right now, use the newest photo. \
+For questions about earlier ("before", "just passed"), describe the earlier photos. \
 Use positions (left, center, right, near) when they help.
 8. The answer is read aloud by a voice that only speaks {language_name}: if a sign or \
 label is written in another language, say what it means in {language_name} instead of \

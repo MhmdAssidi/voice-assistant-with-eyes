@@ -30,8 +30,23 @@ _LIVE_WORDS = [
 ]
 
 
+# ...unless the question is about the PAST: "What WAS in front of me BEFORE?" must be
+# answered from stored frames (memory), not from what the camera sees now.
+# (Not "il y a": in "qu'est-ce qu'il y a devant moi" it means "there is".)
+_PAST_WORDS = [
+    # English
+    "before", "earlier", "previous", " was ", " were ", "just passed", " ago",
+    # French
+    "avant", "tout à l'heure", "était", "étaient", "précédent",
+    # Arabic: كان (was), قبل (before), سابق / صابق (previously; Whisper sometimes writes ص)
+    "كان", "قبل", "سابق", "صابق", "مررت",
+]
+
+
 def is_live_question(question: str) -> bool:
-    text = question.lower().replace("’", "'")
+    text = f" {question.lower().replace('’', chr(39))} "
+    if any(word in text for word in _PAST_WORDS):
+        return False
     return any(word in text for word in _LIVE_WORDS)
 
 
