@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # RETENTION_MINUTES (above) are deleted, rows and files, every RETENTION_CHECK_S.
     face_min_confidence: float = 0.5  # low on purpose: a missed face is worse than extra blur
     retention_check_s: float = 60.0
+    # Warnings (A11): CLIP zero-shot probability needed to warn, and no repeat of the
+    # same kind within the cooldown (the same staircase stays in view for a while).
+    warn_stairs_min: float = 0.5
+    warn_door_min: float = 0.45
+    warning_cooldown_s: float = 15.0
 
     # ---------- Student B section ----------
     vlm_provider: str = "gemini"  # gemini | ollama
