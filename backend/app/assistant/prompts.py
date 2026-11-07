@@ -36,10 +36,10 @@ class PromptImage:
     """What we know about one evidence photo."""
 
     age_s: int  # seconds since it was captured
-    ocr_text: str
-    objects: list[str]  # e.g. ["door (center, near)", "chair (left)"]
+    ocr_text: str | None  # None = not analysed (live snapshot): the model reads the picture
+    objects: list[str] | None  # e.g. ["door (center, near)", "chair (left)"]; None = not analysed
     is_latest: bool  # the newest view of the camera
-    has_image: bool  # False while frames are stubs (no JPEG file yet)
+    has_image: bool  # False if the JPEG file is missing
 
 
 def system_prompt(language: str) -> str:
@@ -55,8 +55,11 @@ def user_prompt(question: str, images: list[PromptImage]) -> str:
         lines.append(f"Photo {number} ({kind}, taken {_age(image.age_s)} ago):")
         if not image.has_image:
             lines.append("  (picture not available; use only the description below)")
+        if image.ocr_text is None and image.objects is None:
+            lines.append("  (taken right now; read any text and objects from the picture itself)")
+            continue
         lines.append(f"  Text read in it: {image.ocr_text or '(none)'}")
-        lines.append(f"  Objects detected: {', '.join(image.objects) or '(none)'}")
+        lines.append(f"  Objects detected: {', '.join(image.objects or []) or '(none)'}")
     return "\n".join(lines)
 
 

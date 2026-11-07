@@ -81,21 +81,33 @@ export default function History() {
 
           {r.evidence.length > 0 && (
             <div className="qa-evidence" aria-label="Frames used for the answer">
-              {r.evidence.map((e) => (
-                <Link key={e.frame_id} to={`/frames/${e.frame_id}`} className="qa-thumb">
+              {r.evidence.map((e) => {
+                const image = (
                   <img
                     src={e.thumb_url}
-                    alt={`Frame ${e.frame_id}, score ${e.score.toFixed(2)}`}
+                    alt={e.frame_id === 0 ? 'Live camera view when the question was asked'
+                      : `Frame ${e.frame_id}, score ${e.score.toFixed(2)}`}
                     loading="lazy"
                     onError={(ev) => {
-                      ev.currentTarget.style.visibility = 'hidden' // stub frames have no file
+                      ev.currentTarget.style.visibility = 'hidden' // file deleted (retention)
                     }}
                   />
-                  <span>
-                    #{e.frame_id} · {e.score.toFixed(2)}
+                )
+                // frame_id 0 = live snapshot taken at question time (not a stored frame)
+                return e.frame_id === 0 ? (
+                  <span key={`live-${e.thumb_url}`} className="qa-thumb">
+                    {image}
+                    <span>live view</span>
                   </span>
-                </Link>
-              ))}
+                ) : (
+                  <Link key={e.frame_id} to={`/frames/${e.frame_id}`} className="qa-thumb">
+                    {image}
+                    <span>
+                      #{e.frame_id} · {e.score.toFixed(2)}
+                    </span>
+                  </Link>
+                )
+              })}
             </div>
           )}
 
