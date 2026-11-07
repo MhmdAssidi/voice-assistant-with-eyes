@@ -1,8 +1,8 @@
 """Per-frame processing pipeline: the "Remember" step (owner: Student A).
 
 Order: quality -> enhance -> face blur -> OCR -> objects -> embed -> store -> warnings.
-Done: quality (A3), OCR (A5), objects (A6), embed + store (A7).
-Coming in Week 4: enhance (A4), face blur (A9), warnings (A11).
+Done: quality (A3), enhance (A4), OCR (A5), objects (A6), embed + store (A7).
+Coming in Week 4: face blur (A9), warnings (A11).
 The heavy models are passed in (or loaded once here), never per frame.
 """
 
@@ -15,6 +15,7 @@ from app.memory import files
 from app.memory import repository as repo
 from app.memory.embeddings import Embedder, build_caption
 from app.vision.detect import ObjectDetector
+from app.vision.enhance import enhance
 from app.vision.ocr import OcrEngine
 from app.vision.quality import FrameSelector, measure
 
@@ -53,11 +54,19 @@ class Pipeline:
         if not decision.keep:
             return False
         lap("quality")
-        # A4 (enhance) and A9 (face blur) will change `image` here, before anything reads it
+
+        # A4: a dark frame is brightened; OCR, CLIP, the stored JPEG (and so the dashboard
+        # and the VLM) all use the enhanced image. A9 (face blur) will also change it here.
+        enhanced = enhance(image, quality.brightness)
+        image = enhanced.image
+        lap("enhance")
 
         ocr = self.ocr.read(image)
         lap("ocr")
-        objects = self.detector.detect(image)
+        # YOLO reads the ORIGINAL frame: it was trained with brightness changes, and on our
+        # dark test photos the enhanced image made it find fewer objects (A4 measurements).
+        # Same size, so its boxes still fit the stored enhanced image.
+        objects = self.detector.detect(frame.image)
         lap("objects")
         caption = build_caption(ocr.text, objects)
         image_emb = self.embedder.embed_image(image)
@@ -76,7 +85,7 @@ class Pipeline:
                 height=image.shape[0],
                 sharpness=quality.sharpness,
                 brightness=quality.brightness,
-                enhanced=False,
+                enhanced=enhanced.enhanced,
                 dhash=quality.dhash,
                 ocr_text=ocr.text,
                 ocr_blocks=ocr.blocks,
