@@ -10,7 +10,7 @@ These defaults are overridden by the tests that need something else:
 import psycopg
 import pytest
 
-from app.assistant import answer, qa_repository, vlm
+from app.assistant import answer, live_view, qa_repository, vlm
 
 
 def _no_database() -> psycopg.Connection:
@@ -30,3 +30,5 @@ def _isolated_from_real_services(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(qa_repository, "_connect", _no_database)
     # Vision-language model: behaves like "model unavailable" (spoken apology)
     monkeypatch.setattr(answer, "get_provider", lambda: _NoModel())
+    # Live camera snapshot: behaves like "no stream right now" (stored frames are used)
+    monkeypatch.setattr(live_view, "grab", lambda: None)

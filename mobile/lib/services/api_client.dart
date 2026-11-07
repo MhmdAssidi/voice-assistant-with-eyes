@@ -59,7 +59,7 @@ class ApiClient {
   static const apiPort = 8000;
 
   /// Speech-to-text + search + vision model can take a while on a CPU laptop.
-  static const askTimeout = Duration(seconds: 30);
+  static const askTimeout = Duration(seconds: 45);
 
   static Uri baseUri(String host) => Uri(scheme: 'http', host: host, port: apiPort);
 

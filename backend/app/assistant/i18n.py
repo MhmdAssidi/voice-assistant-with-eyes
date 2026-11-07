@@ -28,9 +28,11 @@ CHECK_CAREFULLY: dict[Language, str] = {
 }
 
 NO_EVIDENCE: dict[Language, str] = {
-    "en": "I'm not sure. I haven't seen anything yet; check that the camera is connected.",
-    "fr": "Je ne suis pas sûr. Je n'ai encore rien vu ; vérifiez que la caméra est connectée.",
-    "ar": "لست متأكدًا. لم أرَ شيئًا بعد؛ تأكد من أن الكاميرا متصلة.",
+    "en": "I'm not sure. I can't see anything clearly right now; point the camera ahead "
+    "and try again.",
+    "fr": "Je ne suis pas sûr. Je ne vois rien de clair pour le moment ; dirigez la caméra "
+    "devant vous et réessayez.",
+    "ar": "لست متأكدًا. لا أرى شيئًا بوضوح الآن؛ وجّه الكاميرا إلى الأمام وحاول مرة أخرى.",
 }
 
 VLM_UNAVAILABLE: dict[Language, str] = {

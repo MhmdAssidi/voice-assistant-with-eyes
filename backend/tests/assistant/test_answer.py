@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.assistant import answer, prompts, vlm
 from app.assistant.i18n import NO_EVIDENCE, VLM_UNAVAILABLE
+from app.assistant.live_view import LiveFrame
 from app.contracts import DetectedObject, FrameDetail, FrameSummary, SearchHit
 from app.main import app
 from app.memory import search
@@ -85,6 +86,76 @@ def test_evidence_is_latest_then_best_hits_without_duplicates(memory) -> None:
     assert [e.frame.id for e in evidence] == [7, 5, 4]  # max 3, frame 7 not repeated
     assert evidence[0].is_latest and evidence[0].objects == ["door (center, near)"]
     assert [e.jpeg is not None for e in evidence] == [False, True, False]
+
+
+def live_frame(usable: bool) -> LiveFrame:
+    return LiveFrame(
+        jpeg=b"\xff\xd8 live", captured_at=datetime.now(UTC), usable=usable,
+        reason="ok" if usable else "not_informative", url="/media/live/now.jpg",
+    )
+
+
+def test_live_question_sees_the_current_moment_first(memory, provider) -> None:
+    result = answer.answer_question("What is in front of me?", "en", live=live_frame(True))
+    system, user, images = provider.calls[0]
+    assert images[0] == b"\xff\xd8 live", "the snapshot is the first picture"
+    assert "Photo 1 (newest view, taken 0 s ago)" in user
+    assert "taken right now; read any text" in user
+    assert "Photo 2 (earlier view" in user, "the stored latest frame is no longer 'newest'"
+    assert result.evidence[0].frame_id == 0
+    assert result.evidence[0].thumb_url == "/media/live/now.jpg"
+    assert result.confident is True
+
+
+def test_live_question_with_covered_camera_says_it_cannot_see(memory, provider) -> None:
+    result = answer.answer_question("What is in front of me?", "fr", live=live_frame(False))
+    assert result.answer == NO_EVIDENCE["fr"]
+    assert result.confident is False
+    assert provider.calls == [], "no guessing from older frames"
+    assert result.evidence[0].thumb_url == "/media/live/now.jpg", "History shows what was seen"
+
+
+def test_question_about_the_past_ignores_the_snapshot(memory, provider) -> None:
+    answer.answer_question("What did the sign say?", "en", live=live_frame(False))
+    _, user, images = provider.calls[0]
+    assert b"\xff\xd8 live" not in images
+    assert "taken right now" not in user
+
+
+def test_ask_endpoint_passes_the_live_snapshot(memory, provider, monkeypatch) -> None:
+    from app.assistant import live_view
+
+    monkeypatch.setattr(live_view, "grab", lambda: live_frame(True))
+    r = TestClient(app).post("/api/ask", data={"text": "What is in front of me?"})
+    assert r.json()["evidence"][0]["frame_id"] == 0
+    assert provider.calls[0][2][0] == b"\xff\xd8 live"
+
+
+@pytest.mark.parametrize(
+    ("question", "window_s"),
+    [
+        ("What is in front of me?", 60),  # about now: only the last minute
+        ("Qu'est-ce qu'il y a devant moi ?", 60),
+        ("ماذا يوجد أمامي؟", 60),
+        ("What did the sign say?", 600),  # about the recent past: last 10 minutes
+    ],
+)
+def test_search_window_depends_on_the_question(monkeypatch, question: str, window_s: int) -> None:
+    asked = {}
+
+    def fake_latest(max_age_s=10):  # noqa: ANN001, ANN202
+        asked["latest_max_age_s"] = max_age_s
+
+    def fake_search(q, since=None, until=None, limit=5):  # noqa: ANN001, ANN202
+        asked["since"] = since
+        return []
+
+    monkeypatch.setattr(search, "get_latest_frame", fake_latest)
+    monkeypatch.setattr(search, "search_frames", fake_search)
+    now = datetime.now(UTC)
+    answer.gather_evidence(question, now=now)
+    assert (now - asked["since"]).total_seconds() == window_s
+    assert asked["latest_max_age_s"] == 30, "STT takes 8-17 s: allow a 30 s old latest frame"
 
 
 def test_no_latest_frame_uses_search_only(memory, monkeypatch) -> None:

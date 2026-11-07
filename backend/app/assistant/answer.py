@@ -1,7 +1,7 @@
 """The answer pipeline (owner: Student B, tasks B7-B8).
 
-question -> evidence frames (latest + best search hits) -> prompt -> VLM
--> honesty rules (uncertainty.py) -> answer.
+question -> evidence frames (live snapshot for "now" questions + latest stored frame +
+best search hits) -> prompt -> VLM -> honesty rules (uncertainty.py) -> answer.
 Every stage is timed; the times go back to the phone and the dashboard.
 """
 
@@ -13,6 +13,7 @@ from pathlib import Path
 
 from app.assistant import prompts, uncertainty
 from app.assistant.i18n import NO_EVIDENCE, VLM_UNAVAILABLE, phrase
+from app.assistant.live_view import LiveFrame
 from app.assistant.vlm import VlmError, get_provider
 from app.contracts import Evidence, FrameSummary
 from app.memory import search
@@ -21,7 +22,12 @@ log = logging.getLogger("uvicorn.error")
 
 MAX_IMAGES = 3  # more images = slower and not more accurate for short questions
 SEARCH_WINDOW = timedelta(minutes=10)  # "what did that sign say?" means recently
-LATEST_MAX_AGE_S = 10  # older than this, the "latest frame" is not "in front of me"
+# "What is in front of me?" is about NOW: frames from minutes ago would describe a scene
+# the user has left (tested: old laptop frames answered a question about a cigarette box).
+LIVE_SEARCH_WINDOW = timedelta(seconds=60)
+# The latest frame may be this old: speech-to-text alone takes 8-17 s on the laptop CPU,
+# so the frame from when the user STARTED asking is often 15-25 s old at search time.
+LATEST_MAX_AGE_S = 30
 
 
 @dataclass
@@ -30,7 +36,8 @@ class EvidenceFrame:
     score: float  # search score; 1.0 for the latest frame
     is_latest: bool
     objects: list[str]  # with positions when known, e.g. "door (center, near)"
-    jpeg: bytes | None  # None while frames are stubs (no file on disk)
+    jpeg: bytes | None  # None if the image file is missing (deleted by retention)
+    analysed: bool = True  # False for the live snapshot: no OCR/objects, the model reads it
 
 
 @dataclass
@@ -41,10 +48,30 @@ class AnswerResult:
     timings_ms: dict[str, int] = field(default_factory=dict)
 
 
-def gather_evidence(question: str, now: datetime | None = None) -> list[EvidenceFrame]:
-    """Latest frame first, then the best search hits, without duplicates, max 3."""
+def gather_evidence(
+    question: str, now: datetime | None = None, live: LiveFrame | None = None
+) -> list[EvidenceFrame]:
+    """Newest view first, then the best search hits, without duplicates, max 3.
+
+    For live-view questions the newest view is the live snapshot taken when the
+    question arrived (if it is usable), and the search only looks at the last
+    minute; other questions ("what did that sign say?") look at the last 10 minutes.
+    """
     now = now or datetime.now(UTC)
+    is_live = uncertainty.is_live_question(question)
+    window = LIVE_SEARCH_WINDOW if is_live else SEARCH_WINDOW
     chosen: list[EvidenceFrame] = []
+
+    if is_live and live is not None and live.usable:
+        snapshot = FrameSummary(
+            id=0,  # not a stored frame
+            captured_at=live.captured_at,
+            thumb_url=live.url,
+            ocr_text="",
+            object_labels=[],
+            enhanced=False,
+        )
+        chosen.append(EvidenceFrame(snapshot, 1.0, True, [], live.jpeg, analysed=False))
 
     latest = search.get_latest_frame(max_age_s=LATEST_MAX_AGE_S)
     if latest is not None:
@@ -52,9 +79,10 @@ def gather_evidence(question: str, now: datetime | None = None) -> list[Evidence
             f"{o.label} ({o.position}{', near' if o.near else ''})" for o in latest.objects
         ] or latest.object_labels
         summary = FrameSummary(**latest.model_dump(include=set(FrameSummary.model_fields)))
-        chosen.append(EvidenceFrame(summary, 1.0, True, objects, _read_jpeg(latest.id)))
+        is_newest = not chosen  # the live snapshot, when present, is newer
+        chosen.append(EvidenceFrame(summary, 1.0, is_newest, objects, _read_jpeg(latest.id)))
 
-    for hit in search.search_frames(question, since=now - SEARCH_WINDOW, limit=5):
+    for hit in search.search_frames(question, since=now - window, limit=5):
         if len(chosen) >= MAX_IMAGES:
             break
         if any(e.frame.id == hit.frame.id for e in chosen):
@@ -64,11 +92,19 @@ def gather_evidence(question: str, now: datetime | None = None) -> list[Evidence
     return chosen
 
 
-def answer_question(question: str, language: str) -> AnswerResult:
+def answer_question(question: str, language: str, live: LiveFrame | None = None) -> AnswerResult:
     timings: dict[str, int] = {}
 
+    if uncertainty.is_live_question(question) and live is not None and not live.usable:
+        # The camera sees nothing useful right now (covered, too dark, too close):
+        # say so, instead of describing an older scene the user may have left.
+        timings.update(search=0, vlm=0)
+        seen = [Evidence(frame_id=0, captured_at=live.captured_at, thumb_url=live.url, score=0.0)]
+        log.info("answer [%s]: live view not usable (%s)", language, live.reason)
+        return AnswerResult(phrase(NO_EVIDENCE, language), False, seen, timings)
+
     started = time.perf_counter()
-    evidence = gather_evidence(question)
+    evidence = gather_evidence(question, live=live)
     timings["search"] = _ms_since(started)
     evidence_out = [
         Evidence(
@@ -89,8 +125,8 @@ def answer_question(question: str, language: str) -> AnswerResult:
     prompt_images = [
         prompts.PromptImage(
             age_s=max(0, int((now - e.frame.captured_at).total_seconds())),
-            ocr_text=e.frame.ocr_text,
-            objects=e.objects,
+            ocr_text=e.frame.ocr_text if e.analysed else None,
+            objects=e.objects if e.analysed else None,
             is_latest=e.is_latest,
             has_image=e.jpeg is not None,
         )

@@ -4,6 +4,7 @@ audio (or text) -> speech-to-text (B6) -> evidence frames + VLM answer (B7)
 with honesty rules (B8) -> saved in qa_log and broadcast as question_answered (B11).
 """
 
+import asyncio
 import io
 import logging
 import time
@@ -12,7 +13,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from app.assistant import answer, qa_repository, stt
+from app.assistant import answer, live_view, qa_repository, stt
 from app.assistant.i18n import NOT_HEARD, phrase
 from app.config import settings
 from app.contracts import AskResponse, Event, QaRecord
@@ -33,6 +34,9 @@ async def ask(
 
     started = time.perf_counter()
     timings: dict[str, int] = {"stt": 0, "search": 0, "vlm": 0}
+    # Grab what the camera sees NOW, in parallel with speech-to-text (so it costs no
+    # extra time). Used for live-view questions ("what is in front of me?").
+    snapshot = asyncio.create_task(run_in_threadpool(_grab_live_view))
 
     if audio is not None:
         data = await audio.read()
@@ -54,13 +58,15 @@ async def ask(
         if settings.save_question_audio:
             _save_question_audio(data, language)
         if not question:
+            snapshot.cancel()
             return _not_heard(language, timings, started)
     else:
         question = text or ""
         language = stt.fallback_language(lang_hint)
 
+    live = await snapshot
     # Search + VLM call are blocking (disk, network): also in a worker thread.
-    result = await run_in_threadpool(answer.answer_question, question, language)
+    result = await run_in_threadpool(answer.answer_question, question, language, live)
     timings.update(result.timings_ms)
     timings["total"] = _ms_since(started)
 
@@ -79,6 +85,15 @@ async def ask(
         Event(type="question_answered", ts=record.asked_at, data=record.model_dump(mode="json"))
     )
     return AskResponse(**record.model_dump(exclude={"asked_at"}))
+
+
+def _grab_live_view() -> live_view.LiveFrame | None:
+    """Never lets a camera problem break the answer: stored frames are the fallback."""
+    try:
+        return live_view.grab()
+    except Exception as error:  # OpenCV missing, stream error...
+        log.warning("live view failed: %s", error)
+        return None
 
 
 def _not_heard(language: str, timings: dict[str, int], started: float) -> AskResponse:
