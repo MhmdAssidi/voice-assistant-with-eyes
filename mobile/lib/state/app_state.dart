@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../l10n/strings.dart';
 import '../services/api_client.dart';
 import '../services/audio_service.dart';
+import '../services/discovery_service.dart';
 import '../services/events_service.dart';
 import '../services/settings_service.dart';
 import '../services/stream_service.dart';
@@ -28,8 +29,10 @@ class AppState extends ChangeNotifier {
     Speaker? speaker,
     WarningSource? warnings,
     WarningBuzzer? buzzer,
+    ServerFinder? finder,
     DateTime Function()? clock,
     this.healthCheckInterval = const Duration(seconds: 5),
+    this.discoveryInterval = const Duration(seconds: 10),
     this.maxRecording = const Duration(seconds: 10),
     this.minRecording = const Duration(milliseconds: 700),
   })  : _settingsService = settingsService ?? SettingsService(),
@@ -39,6 +42,7 @@ class AppState extends ChangeNotifier {
         _speaker = speaker ?? PhoneSpeaker(),
         _warnings = warnings ?? EventsService(),
         _buzzer = buzzer ?? PhoneBuzzer(),
+        _finder = finder ?? UdpServerFinder(),
         _clock = clock ?? DateTime.now {
     _streamer.status.addListener(_onCameraStatusChanged);
     _warningSubscription = _warnings.warnings.listen(_onWarning);
@@ -51,9 +55,13 @@ class AppState extends ChangeNotifier {
   final Speaker _speaker;
   final WarningSource _warnings;
   final WarningBuzzer _buzzer;
+  final ServerFinder _finder;
   final DateTime Function() _clock;
   late final StreamSubscription<HazardWarning> _warningSubscription;
   final Duration healthCheckInterval;
+
+  /// Minimum time between two searches for the server on the network.
+  final Duration discoveryInterval;
 
   /// The same kind of warning is spoken at most once per this time (B12): the
   /// worker already waits between warnings, but a staircase seen while walking
@@ -76,6 +84,8 @@ class AppState extends ChangeNotifier {
   bool _paused = false; // app in the background
   bool _busy = false; // a start/stop of the recorder is in progress
   int _failedChecks = 0; // health checks failed in a row
+  bool _discovering = false;
+  DateTime? _lastDiscovery;
 
   /// Also called with every status sentence that is spoken (used by tests).
   void Function(String message)? onAnnounce;
@@ -153,6 +163,7 @@ class AppState extends ChangeNotifier {
   Future<void> checkServer() async {
     if (!_settings.hasServer) {
       if (_isIdle) _setStatus(AppStatus.noServer);
+      await _discover();
       return;
     }
     final host = _settings.serverHost;
@@ -161,6 +172,9 @@ class AppState extends ChangeNotifier {
     // Once ready, one lost check (a dropped Wi-Fi packet) is not enough to
     // say "server not reachable": wait for a second failure in a row.
     if (!reachable && _status == AppStatus.ready && _failedChecks < 2) return;
+    // The saved address does not answer: maybe we are on another network
+    // (other home, hotspot, the presentation room) and the laptop has a new IP.
+    if (!reachable && await _discover()) return;
     // Server found: start the camera (does nothing if it already streams
     // there; if the connection drops, the streamer reconnects by itself).
     // (_paused: this check may have started just before the app went away.)
@@ -170,6 +184,31 @@ class AppState extends ChangeNotifier {
     }
     // Never interrupt a question in progress.
     if (_isIdle) _setStatus(reachable ? AppStatus.ready : AppStatus.offline);
+  }
+
+  /// Searches the network for the server. If it is found at a new address, saves
+  /// it, says "Server found" and reconnects. Returns true in that case.
+  Future<bool> _discover() async {
+    final now = _clock();
+    if (_discovering || _paused) return false;
+    if (_lastDiscovery != null && now.difference(_lastDiscovery!) < discoveryInterval) {
+      return false; // don't flood the network: at most one search every 10 s
+    }
+    _discovering = true;
+    _lastDiscovery = now;
+    try {
+      final host = await _finder.find();
+      if (host == null || host == _settings.serverHost) return false;
+      _settings = Settings(serverHost: host, language: _settings.language);
+      await _settingsService.save(_settings);
+      _failedChecks = 0;
+      notifyListeners();
+      _announce(strings.serverFound);
+      await checkServer(); // now reachable: ready, and camera + warnings move to the new address
+      return true;
+    } finally {
+      _discovering = false;
+    }
   }
 
   /// Speaks "Camera connected" / "Camera disconnected" when it changes.

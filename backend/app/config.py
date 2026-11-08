@@ -66,8 +66,10 @@ class Settings(BaseSettings):
     gemini_fallback_model: str = "gemini-3.1-flash-lite"
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5vl:3b"
-    # Total for all models together; the phone gives up after 30 s (STT ~8 s + search + VLM).
-    vlm_timeout_s: float = 20.0
+    # Total for all models together (12 s each for 2 models); the phone gives up after
+    # 45 s (STT ~8-10 s with the worker at low priority + search + VLM).
+    vlm_timeout_s: float = 24.0
+    discovery_port: int = 8765  # UDP: the phone's "where is the server?" broadcast (polish)
     whisper_model: str = "small"
     models_dir: str = "../data/models"  # downloaded model weights (git-ignored)
     # Keep each spoken question as data/questions/<time>_<lang>.m4a (for tests and

@@ -5,6 +5,7 @@ spoken. The model is loaded once (the first call takes a few seconds; the very
 first run also downloads it, ~480 MB for "small", into MODELS_DIR).
 """
 
+import logging
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, BinaryIO
@@ -17,6 +18,26 @@ from app.contracts import Language
 
 if TYPE_CHECKING:
     from faster_whisper import WhisperModel
+
+log = logging.getLogger("uvicorn.error")
+
+# Whisper learned from subtitled videos. On silence or noise it sometimes "hears" their
+# typical last line instead of nothing (seen in our own log: "Thank you for watching!").
+# Such a text is treated as "nothing heard", so the app asks again.
+_HALLUCINATIONS = [
+    "thank you for watching", "thanks for watching", "please subscribe", "subtitles by",
+    "merci d'avoir regardé", "sous-titres", "sous-titrage",
+    "شكرا للمشاهدة", "شكراً للمشاهدة", "اشتركوا في القناة", "ترجمة نانسي قنقر",
+]
+_MAX_HALLUCINATION_CHARS = 60  # a real question can be longer; these lines are short
+
+
+def is_hallucination(text: str) -> bool:
+    """True for a known Whisper "subtitle" line heard in silence."""
+    normalized = text.lower().replace("\u2019", "'").strip(" .!?")
+    if not normalized or len(normalized) > _MAX_HALLUCINATION_CHARS:
+        return False
+    return any(phrase in normalized for phrase in _HALLUCINATIONS)
 
 SAMPLE_RATE = 16000  # Whisper works on 16 kHz mono audio
 
@@ -121,6 +142,9 @@ def transcribe(audio: str | BinaryIO, lang_hint: str | None = None) -> Transcrip
     segments, _ = model.transcribe(samples, language=language, vad_filter=True, beam_size=5)
     # segments is a generator: the real work happens while we join the texts
     text = " ".join(segment.text.strip() for segment in segments).strip()
+    if is_hallucination(text):
+        log.info("stt: ignored %r (Whisper hears this in silence)", text)
+        text = ""
 
     return Transcript(
         text=text,

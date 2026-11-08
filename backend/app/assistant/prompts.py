@@ -28,6 +28,9 @@ Use positions (left, center, right, near) when they help.
 8. The answer is read aloud by a voice that only speaks {language_name}: if a sign or \
 label is written in another language, say what it means in {language_name} instead of \
 copying the foreign words.
+9. If the question is not about what the camera sees (general knowledge, news, maths, \
+a chat), do not answer it from your own knowledge: say in one sentence that you can only \
+describe what the camera sees.
 
 Reply with JSON only: {{"answer": "<text>", "confident": true or false}}"""
 

@@ -13,6 +13,7 @@ class AppStrings {
     required this.askHint,
     required this.statusConnecting,
     required this.statusNoServer,
+    required this.serverFound,
     required this.statusOffline,
     required this.statusReady,
     required this.statusListening,
@@ -48,6 +49,7 @@ class AppStrings {
   final String askHint;
   final String statusConnecting;
   final String statusNoServer;
+  final String serverFound;
   final String statusOffline;
   final String statusReady;
   final String statusListening;
@@ -97,7 +99,8 @@ class AppStrings {
     stopButton: 'Stop and send',
     askHint: 'Tap to start speaking, tap again to send.',
     statusConnecting: 'Connecting to the server…',
-    statusNoServer: 'Set the server address in Settings.',
+    statusNoServer: 'Looking for the VA Eyes server on this network…',
+    serverFound: 'Server found.',
     statusOffline: 'Server not reachable. Check the Wi-Fi and the server address.',
     statusReady: 'Ready. Tap the big button to ask.',
     statusListening: 'Listening. Tap again to stop.',
@@ -134,7 +137,8 @@ class AppStrings {
     stopButton: 'Arrêter et envoyer',
     askHint: 'Touchez pour parler, touchez à nouveau pour envoyer.',
     statusConnecting: 'Connexion au serveur…',
-    statusNoServer: 'Indiquez l’adresse du serveur dans les réglages.',
+    statusNoServer: 'Recherche du serveur VA Eyes sur ce réseau…',
+    serverFound: 'Serveur trouvé.',
     statusOffline: 'Serveur injoignable. Vérifiez le Wi-Fi et l’adresse du serveur.',
     statusReady: 'Prêt. Touchez le grand bouton pour poser une question.',
     statusListening: 'J’écoute. Touchez à nouveau pour arrêter.',
@@ -172,7 +176,8 @@ class AppStrings {
     stopButton: 'أوقف وأرسل',
     askHint: 'انقر لبدء الكلام، ثم انقر مرة أخرى للإرسال.',
     statusConnecting: 'جارٍ الاتصال بالخادم…',
-    statusNoServer: 'أدخل عنوان الخادم في الإعدادات.',
+    statusNoServer: 'أبحث عن خادم VA Eyes على هذه الشبكة…',
+    serverFound: 'تم العثور على الخادم.',
     statusOffline: 'تعذّر الوصول إلى الخادم. تحقّق من شبكة الواي فاي وعنوان الخادم.',
     statusReady: 'جاهز. انقر على الزر الكبير لطرح سؤال.',
     statusListening: 'أستمع. انقر مرة أخرى للإيقاف.',

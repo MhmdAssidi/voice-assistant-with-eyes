@@ -63,15 +63,7 @@ def gather_evidence(
     chosen: list[EvidenceFrame] = []
 
     if is_live and live is not None and live.usable:
-        snapshot = FrameSummary(
-            id=0,  # not a stored frame
-            captured_at=live.captured_at,
-            thumb_url=live.url,
-            ocr_text="",
-            object_labels=[],
-            enhanced=False,
-        )
-        chosen.append(EvidenceFrame(snapshot, 1.0, True, [], live.jpeg, analysed=False))
+        chosen.append(_snapshot_evidence(live))
 
     latest = search.get_latest_frame(max_age_s=LATEST_MAX_AGE_S)
     if latest is not None:
@@ -89,7 +81,26 @@ def gather_evidence(
             continue
         jpeg = _read_jpeg(hit.frame.id)
         chosen.append(EvidenceFrame(hit.frame, hit.score, False, hit.frame.object_labels, jpeg))
+
+    if not chosen and live is not None and live.usable:
+        # Nothing stored matches (system just started, or a question that is not about
+        # the surroundings): the current view is still better than no picture, and the
+        # model can then answer, or say it only describes what the camera sees.
+        chosen.append(_snapshot_evidence(live))
     return chosen
+
+
+def _snapshot_evidence(live: LiveFrame) -> EvidenceFrame:
+    """The live snapshot as the newest view (not analysed by OCR/YOLO: id 0)."""
+    snapshot = FrameSummary(
+        id=0,  # not a stored frame
+        captured_at=live.captured_at,
+        thumb_url=live.url,
+        ocr_text="",
+        object_labels=[],
+        enhanced=False,
+    )
+    return EvidenceFrame(snapshot, 1.0, True, [], live.jpeg, analysed=False)
 
 
 def answer_question(question: str, language: str, live: LiveFrame | None = None) -> AnswerResult:

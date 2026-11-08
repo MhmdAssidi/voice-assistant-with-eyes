@@ -273,6 +273,7 @@ def test_system_prompt_contains_the_answer_rules() -> None:
     assert "a person" in text
     assert "Never say that something is safe" in text
     assert '"confident"' in text
+    assert "only describe what the camera sees" in text  # off-topic questions
 
 
 @pytest.mark.parametrize(
@@ -287,3 +288,14 @@ def test_parse_answer(reply: str) -> None:
 def test_parse_answer_rejects_unusable_replies(reply: str) -> None:
     with pytest.raises(vlm.VlmError):
         vlm.parse_answer(reply)
+
+
+def test_without_stored_frames_the_snapshot_is_still_used(monkeypatch, provider) -> None:  # noqa: ANN001
+    # Just started (nothing stored yet) and a question that is not about "now"
+    monkeypatch.setattr(search, "get_latest_frame", lambda max_age_s=10: None)
+    monkeypatch.setattr(search, "search_frames", lambda q, since=None, until=None, limit=5: [])
+    result = answer.answer_question("What is the capital of France?", "en",
+                                    live=live_frame(True))
+    _, user, images = provider.calls[0]
+    assert images == [b"\xff\xd8 live"], "the model is asked, with the current view"
+    assert result.evidence[0].frame_id == 0

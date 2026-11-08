@@ -12,7 +12,8 @@ $rules = @(
     @{ Name = "VA Eyes - WebRTC signaling (WHIP/WHEP)"; Protocol = "TCP"; Port = 8889 },
     @{ Name = "VA Eyes - WebRTC media";                 Protocol = "UDP"; Port = 8189 },
     @{ Name = "VA Eyes - HLS fallback";                 Protocol = "TCP"; Port = 8888 },
-    @{ Name = "VA Eyes - API (phone asks questions)";   Protocol = "TCP"; Port = 8000 }
+    @{ Name = "VA Eyes - API (phone asks questions)";   Protocol = "TCP"; Port = 8000 },
+    @{ Name = "VA Eyes - server discovery";             Protocol = "UDP"; Port = 8765 }
 )
 
 foreach ($r in $rules) {
