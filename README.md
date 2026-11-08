@@ -52,6 +52,11 @@ npm install
 npm run dev
 ```
 
+**Shortcut on Windows (demo or daily testing):** double-click `infra\start-demo.cmd`. It frees
+memory, updates `LAN_IP` when the Wi-Fi address changes, starts Docker and opens the backend,
+the worker (at low CPU priority, so spoken questions are answered first) and the dashboard.
+`infra\stop-demo.cmd` stops everything. Checklist for the presentation: [docs/demo-checklist.md](docs/demo-checklist.md).
+
 On Windows, if `uvicorn` says *"Unable to create process"* (the folder was moved after the
 virtual environment was made), start it as `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000`.
 The ingest worker runs in a third terminal: `python -m app.ingest.worker` (from `backend/`).
