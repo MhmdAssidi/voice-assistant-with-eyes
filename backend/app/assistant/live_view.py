@@ -4,6 +4,11 @@ Stored frames are only saved when they are sharp, informative and new, so "no ne
 frame" can mean "same scene" or "camera covered". For questions about NOW we grab
 the current frame straight from the stream (RTSP, like the ingest worker) and
 judge it with the same quality measures as Student A's frame selection.
+
+Privacy, same rules as Student A's stored frames (A9): faces are pixelated BEFORE the
+snapshot is saved or sent to the vision model, and saved snapshots are deleted after
+RETENTION_MINUTES (30 min). If the face blurrer cannot run, the snapshot is not used
+at all: the answer then relies on the stored frames, which are already blurred.
 """
 
 import logging
@@ -11,6 +16,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 
 from app.config import settings
 
@@ -72,7 +78,10 @@ def grab() -> LiveFrame | None:
     captured_at = datetime.now(UTC)
     quality = measure(frame)
     usable, reason = judge(quality.brightness, quality.sharpness, quality.informativeness)
-    ok, encoded = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    blurred = blur_faces(frame)
+    if blurred is None:
+        return None  # never save or send a picture whose faces could not be checked
+    ok, encoded = cv2.imencode(".jpg", blurred, [cv2.IMWRITE_JPEG_QUALITY, 85])
     if not ok:
         return None
     jpeg = encoded.tobytes()
@@ -81,6 +90,26 @@ def grab() -> LiveFrame | None:
         reason, quality.sharpness, quality.brightness, (time.perf_counter() - started) * 1000,
     )
     return LiveFrame(jpeg, captured_at, usable, reason, _save(jpeg, captured_at))
+
+
+_blurrer = None  # Student A's FaceBlurrer (YuNet), created on the first snapshot
+
+
+def blur_faces(frame):  # noqa: ANN001, ANN201 (numpy image in, numpy image out)
+    """The frame with every face pixelated, or None if the face detector cannot run."""
+    global _blurrer
+    try:
+        if _blurrer is None:
+            from app.vision.faces import FaceBlurrer  # Student A's A9 (called, not changed)
+
+            _blurrer = FaceBlurrer()
+        result = _blurrer.blur(frame)
+    except Exception as error:  # noqa: BLE001 (missing model, no internet to download it...)
+        log.warning("live view: face blurring unavailable (%s); snapshot not used", error)
+        return None
+    if result.faces:
+        log.info("live view: %d face(s) blurred", len(result.faces))
+    return result.image
 
 
 def judge(brightness: float, sharpness: float, informativeness: float) -> tuple[bool, str]:
@@ -101,9 +130,20 @@ def _save(jpeg: bytes, captured_at: datetime) -> str:
         folder.mkdir(parents=True, exist_ok=True)
         name = f"{captured_at:%Y%m%d-%H%M%S-%f}.jpg"
         (folder / name).write_bytes(jpeg)
-        for old in sorted(folder.glob("*.jpg"))[:-KEEP_SNAPSHOTS]:
-            old.unlink(missing_ok=True)
+        delete_old_snapshots(folder)
         return f"/media/live/{name}"  # /media serves data/frames (main.py)
     except OSError as error:
         log.warning("live view: could not save the snapshot: %s", error)
         return ""
+
+
+def delete_old_snapshots(folder: Path, now: float | None = None) -> int:
+    """Deletes snapshots older than the retention time, and all but the newest 100."""
+    max_age_s = settings.retention_minutes * 60
+    now = time.time() if now is None else now
+    snapshots = sorted(folder.glob("*.jpg"))  # names start with the time: oldest first
+    old = set(snapshots[:-KEEP_SNAPSHOTS])
+    old.update(p for p in snapshots if now - p.stat().st_mtime > max_age_s)
+    for path in old:
+        path.unlink(missing_ok=True)
+    return len(old)

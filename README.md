@@ -33,6 +33,7 @@ Requirements: Git, Python 3.11+, Node 20+, Docker Desktop.
 ```bash
 # 1. Settings (once)
 cp .env.example .env            # Windows: copy .env.example .env
+#    then in .env: LAN_IP = the laptop's Wi-Fi IP (ipconfig), GEMINI_API_KEY = your key
 
 # 2. Database + streaming server
 docker compose up -d
@@ -51,6 +52,28 @@ npm install
 npm run dev
 ```
 
+On Windows, if `uvicorn` says *"Unable to create process"* (the folder was moved after the
+virtual environment was made), start it as `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+The ingest worker runs in a third terminal: `python -m app.ingest.worker` (from `backend/`).
+
+### The phone app (Android)
+
+The app is in `mobile/` (Flutter). Install it once with the phone on USB
+(Developer options → USB debugging):
+
+```bash
+cd mobile
+flutter pub get
+flutter run          # builds and installs "VA Eyes" on the phone
+```
+
+Then the cable is no longer needed. Phone and laptop must be on the **same Wi-Fi**.
+In the app: ⚙ Settings → the laptop's IP (same as `LAN_IP`) and the preferred language → Save.
+The app says *"Ready"* and *"Camera connected"*; tap the big yellow button, ask, tap again.
+Spoken answers need the Google text-to-speech voices for English, French and Arabic
+(Android Settings → General management → Text-to-speech; the app's Settings page shows
+which voices are missing).
+
 ## Evaluation
 
 Student A's part (remembering and finding what the camera saw) is measured in [`eval/`](eval/README.md). Every test frame goes through the real pipeline and is then searched with 44 questions in English, French and Arabic:
@@ -65,6 +88,27 @@ Student A's part (remembering and finding what the camera saw) is measured in [`
 | Time per stored frame / per search | ~2 s (mostly OCR) / 25 ms |
 
 Full tables, method and known weaknesses: [eval/README.md](eval/README.md). Run it with `python ../eval/run_eval.py` from `backend/`.
+
+### Student B's part: whole questions, answers and users (B13)
+
+Measured on the **real system** (phone → laptop → Gemini), not on a test set: every question
+asked with the phone is saved in the `qa_log` table with its answer and timings (B11).
+
+| What | How | Script |
+| --- | --- | --- |
+| **Latency** | time of each stage of a spoken question: speech-to-text, memory search, vision-language model, total; **mean** and **P95** (95 % of questions were faster) | `python ../eval/latency.py --since <day>` |
+| **Answer accuracy** | 30 questions in real scenes (10 English, 10 French, 10 Arabic), each answer scored by a person who saw the scene: *correct / partial / honest "not sure" / wrong*; also whether the question was heard right | `python ../eval/answer_eval.py export --since <day>`, score `eval/results/answers.csv`, then `… report` |
+| **User feedback** | at least 3 consenting testers, consent + 7 statements rated 1–5 | [docs/feedback-form.md](docs/feedback-form.md) → `eval/results/feedback.csv` |
+
+All three write CSV files, PNG charts and a short Markdown report to `eval/results/`
+(`latency.md`, `answers.md`). The number to keep at zero is **wrong (confident)**: a false
+fact said without "I'm not sure".
+
+First latency numbers (22 full answers from development testing, Nov 4–7, laptop with
+7.8 GB RAM running everything): mean **29 s** per question, of which speech-to-text 19 s,
+Gemini 9 s, search 1 s. Speech-to-text was slowed down by the laptop running out of memory
+(Whisper waiting for swapped memory); the final measurement is done after freeing memory.
+The accuracy and feedback results are added after the tester sessions (week of Nov 23).
 
 ## Team
 
