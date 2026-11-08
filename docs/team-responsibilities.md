@@ -26,16 +26,16 @@ Each task is developed on its own branch and merged through a pull request revie
 | Task | What | Status |
 | --- | --- | --- |
 | S0 | Shared skeleton: API contracts and stubs, Docker, dashboard shell, CI | ✅ |
-| B0 | Flutter setup and mobile skeleton | ⬜ |
-| B1 | MediaMTX configuration | ⬜ |
-| B2 | Accessible main screen, settings, app state | ⬜ |
-| B3 | WebRTC (WHIP) camera publishing | ⬜ |
-| B5 | Tap-to-talk recording and upload | ⬜ |
-| B6 | Speech-to-text with language detection | ⬜ |
-| B7 | `/api/ask` pipeline: retrieval + vision-language answer | ⬜ |
-| B8 | Honesty rules and English/French/Arabic answers | ⬜ |
-| B9 | Spoken answers (TTS) on the phone | ⬜ |
-| B10 | Accessibility pass | ⬜ |
-| B11 | Event hub, status, Q&A log, History page, Status bar | ⬜ |
-| B12 | Spoken warnings on the phone (bonus) | ⬜ |
-| B13 | Answer-accuracy, latency and user-feedback evaluation | ⬜ |
+| B0 | Flutter setup and mobile skeleton | ✅ |
+| B1 | MediaMTX configuration | ✅ |
+| B2 | Accessible main screen, settings, app state | ✅ |
+| B3 | WebRTC (WHIP) camera publishing | ✅ |
+| B5 | Tap-to-talk recording and upload | ✅ |
+| B6 | Speech-to-text with language detection | ✅ |
+| B7 | `/api/ask` pipeline: retrieval + vision-language answer | ✅ |
+| B8 | Honesty rules and English/French/Arabic answers | ✅ |
+| B9 | Spoken answers (TTS) on the phone | ✅ |
+| B10 | Accessibility pass | ✅ |
+| B11 | Event hub, status, Q&A log, History page, Status bar | ✅ |
+| B12 | Spoken warnings on the phone (bonus) | ✅ |
+| B13 | Answer-accuracy, latency and user-feedback evaluation | 🔄 in progress |
