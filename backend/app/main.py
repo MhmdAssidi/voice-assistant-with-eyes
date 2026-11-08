@@ -11,11 +11,14 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import ask, events, frames, questions, search, status
 from app.config import settings
+from app.realtime import discovery
 
 app = FastAPI(
     title="Voice Assistant with Eyes",
     version="1.0.0",
     description="Multimedia Database and Image Processing project, Fall 2026/2027.",
+    # Start-up/shut-down work. Student B: UDP responder so the phone finds the server.
+    lifespan=discovery.lifespan,
 )
 
 app.add_middleware(

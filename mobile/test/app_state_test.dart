@@ -6,6 +6,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart' show MediaStream;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:va_mobile/services/api_client.dart';
 import 'package:va_mobile/services/audio_service.dart';
+import 'package:va_mobile/services/discovery_service.dart';
 import 'package:va_mobile/services/events_service.dart';
 import 'package:va_mobile/services/settings_service.dart';
 import 'package:va_mobile/services/stream_service.dart';
@@ -134,6 +135,28 @@ class FakeBuzzer implements WarningBuzzer {
   Future<void> buzz() async => buzzes++;
 }
 
+/// Pretends to search the network; answers [host] (null = nobody there).
+class FakeFinder implements ServerFinder {
+  String? host;
+  int searches = 0;
+
+  @override
+  Future<String?> find() async {
+    searches++;
+    return host;
+  }
+}
+
+/// A server that only answers at [goodHost] (to test moving between networks).
+class OneHostApi extends FakeApi {
+  OneHostApi(this.goodHost);
+
+  String goodHost;
+
+  @override
+  Future<bool> isServerReachable(String host) async => host == goodHost;
+}
+
 /// A clock the test moves forward by hand.
 class FakeClock {
   DateTime now = DateTime(2026, 11, 7, 10);
@@ -145,7 +168,7 @@ class FakeClock {
 
 class Harness {
   Harness(this.state, this.api, this.streamer, this.recorder, this.speaker, this.announced,
-      this.warnings, this.buzzer, this.clock);
+      this.warnings, this.buzzer, this.clock, this.finder);
 
   final AppState state;
   final FakeApi api;
@@ -156,6 +179,7 @@ class Harness {
   final FakeWarnings warnings;
   final FakeBuzzer buzzer;
   final FakeClock clock;
+  final FakeFinder finder;
 }
 
 Future<Harness> makeState({
@@ -163,30 +187,36 @@ Future<Harness> makeState({
   bool reachable = true,
   Duration maxRecording = const Duration(seconds: 10),
   FakeSpeaker? speaker,
+  FakeApi? api,
+  String? discoverableHost,
 }) async {
   SharedPreferences.setMockInitialValues(saved);
-  final api = FakeApi(reachable: reachable);
+  final server = api ?? FakeApi(reachable: reachable);
   final streamer = FakeStreamer();
   final recorder = FakeRecorder();
   final voice = speaker ?? FakeSpeaker();
   final warnings = FakeWarnings();
   final buzzer = FakeBuzzer();
   final clock = FakeClock();
+  final finder = FakeFinder()..host = discoverableHost;
   final state = AppState(
-    api: api,
+    api: server,
     streamer: streamer,
     recorder: recorder,
     speaker: voice,
     warnings: warnings,
     buzzer: buzzer,
     clock: clock.call,
+    finder: finder,
+    discoveryInterval: Duration.zero,
     maxRecording: maxRecording,
   );
   final announced = <String>[];
   state.onAnnounce = announced.add;
   await state.loadSettings();
   await state.checkServer();
-  return Harness(state, api, streamer, recorder, voice, announced, warnings, buzzer, clock);
+  return Harness(
+      state, server, streamer, recorder, voice, announced, warnings, buzzer, clock, finder);
 }
 
 void main() {
@@ -320,6 +350,66 @@ void main() {
       expect(h.state.status, AppStatus.offline);
       expect(h.recorder.recording, isFalse);
       expect(h.announced, [h.state.strings.statusOffline]);
+    });
+  });
+
+  group('finding the server by itself (polish)', () {
+    test('first start, no address saved -> found on the network, saved, ready', () async {
+      final h = await makeState(saved: {}, discoverableHost: '192.168.1.20');
+      expect(h.state.settings.serverHost, '192.168.1.20');
+      expect(h.state.status, AppStatus.ready);
+      expect(h.announced, contains(h.state.strings.serverFound));
+      expect(h.streamer.startedHosts, ['192.168.1.20']);
+      expect(h.warnings.startedHosts, ['192.168.1.20']);
+      final saved = await SettingsService().load();
+      expect(saved.serverHost, '192.168.1.20', reason: 'remembered for next time');
+    });
+
+    test('other network: old address stops answering -> new one found', () async {
+      final api = OneHostApi('192.168.0.105');
+      final h = await makeState(api: api);
+      expect(h.state.status, AppStatus.ready);
+
+      // In the presentation room the laptop is now 10.0.0.7.
+      api.goodHost = '10.0.0.7';
+      h.finder.host = '10.0.0.7';
+      await h.state.checkServer(); // 1st failure: ignored (could be a lost packet)
+      expect(h.finder.searches, 0);
+      await h.state.checkServer(); // 2nd failure: search the network
+      expect(h.finder.searches, 1);
+      expect(h.state.settings.serverHost, '10.0.0.7');
+      expect(h.state.status, AppStatus.ready);
+      expect(h.streamer.startedHosts.last, '10.0.0.7');
+      expect(h.warnings.startedHosts.last, '10.0.0.7');
+    });
+
+    test('nobody answers -> stays offline, and says why', () async {
+      final h = await makeState(reachable: false);
+      expect(h.finder.searches, greaterThanOrEqualTo(1));
+      expect(h.state.status, AppStatus.offline);
+      expect(h.announced, contains(h.state.strings.statusOffline));
+    });
+
+    test('searches at most once per interval', () async {
+      SharedPreferences.setMockInitialValues({});
+      final finder = FakeFinder();
+      final clock = FakeClock();
+      final state = AppState(
+        api: FakeApi(),
+        streamer: FakeStreamer(),
+        recorder: FakeRecorder(),
+        speaker: FakeSpeaker(),
+        warnings: FakeWarnings(),
+        buzzer: FakeBuzzer(),
+        finder: finder,
+        clock: clock.call,
+      );
+      await state.loadSettings();
+      await state.checkServer();
+      await state.checkServer(); // 0 s later: no new search
+      clock.advance(const Duration(seconds: 11));
+      await state.checkServer();
+      expect(finder.searches, 2);
     });
   });
 

@@ -91,6 +91,17 @@ if (-not $wifi) {
         Say "Wi-Fi address $ip = LAN_IP in .env. Good." 'Green'
     }
 }
+# The phone must be allowed in (video, questions, and finding the laptop by itself).
+if (-not (Get-NetFirewallRule -DisplayName 'VA Eyes - server discovery' -ErrorAction SilentlyContinue)) {
+    Say 'Opening the firewall ports for the phone (Windows will ask for permission: click Yes)...' 'Yellow'
+    try {
+        Start-Process powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile',
+            '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $root 'infra\mediamtx\open-firewall.ps1')
+        Say 'Firewall ports opened.' 'Green'
+    } catch {
+        Say 'Firewall not changed (permission refused): the phone may not find the laptop.' 'Red'
+    }
+}
 
 # ---------- 3. Docker ----------
 Step '3/5 Database + video server (Docker)'
@@ -147,7 +158,7 @@ if (Wait-Url 'http://localhost:5173' 1) {
 # ---------- 5. the phone ----------
 Step '5/5 The phone'
 Say "1. Phone on the same Wi-Fi as the laptop ($((Get-NetConnectionProfile -ErrorAction SilentlyContinue | Select-Object -First 1).Name))."
-Say "2. Open VA Eyes. Settings -> server IP: $ip"
+Say "2. Open VA Eyes. It finds the laptop by itself; if not: Settings -> server IP: $ip"
 Say '3. Wait for "Ready" and "Camera connected", then tap the yellow button and ask.'
 Write-Host ''
 Say 'Everything is started. Keep the 3 windows open. Stop with infra\stop-demo.cmd.' 'Yellow'

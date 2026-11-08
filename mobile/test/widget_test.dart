@@ -5,7 +5,7 @@ import 'package:va_mobile/main.dart';
 import 'package:va_mobile/state/app_state.dart';
 
 import 'app_state_test.dart'
-    show FakeApi, FakeBuzzer, FakeRecorder, FakeSpeaker, FakeStreamer, FakeWarnings;
+    show FakeApi, FakeBuzzer, FakeFinder, FakeRecorder, FakeSpeaker, FakeStreamer, FakeWarnings;
 
 Future<AppState> pumpApp(WidgetTester tester, {String language = 'en'}) async {
   SharedPreferences.setMockInitialValues({'server_host': '192.168.0.105', 'language': language});
@@ -16,6 +16,7 @@ Future<AppState> pumpApp(WidgetTester tester, {String language = 'en'}) async {
     speaker: FakeSpeaker(),
     warnings: FakeWarnings(),
     buzzer: FakeBuzzer(),
+    finder: FakeFinder(),
   );
   await state.loadSettings();
   await state.checkServer();

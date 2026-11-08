@@ -160,3 +160,30 @@ def test_real_recordings(filename: str, hint: str, language: str, words: list[st
           f"p={t.language_probability}] {t.text!r}")
     assert t.language == language
     assert all(word in t.text.lower() for word in words), t.text
+
+
+# ---------- Whisper "hearing" subtitle lines in silence ----------
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Thank you for watching!", True),  # real case from our qa_log (id 24)
+        ("Thanks for watching.", True),
+        ("Merci d'avoir regardé !", True),
+        ("Merci d’avoir regardé cette vidéo", True),
+        ("شكرا للمشاهدة", True),
+        ("What's in front of me?", False),
+        ("Qu'est-ce qu'il y a devant moi ?", False),
+        ("", False),
+        ("Thank you for watching my bag, now what does the sign over there say?", False),
+    ],
+)
+def test_is_hallucination(text: str, expected: bool) -> None:
+    assert stt.is_hallucination(text) is expected
+
+
+def test_hallucination_becomes_nothing_heard(fake_model) -> None:  # noqa: ANN001
+    fake_model([("en", 0.97)], {"en": "Thank you for watching!"})
+    t = stt.transcribe(io.BytesIO(b"audio"), lang_hint="en")
+    assert t.text == ""  # /api/ask then says "I did not hear you" and asks again
