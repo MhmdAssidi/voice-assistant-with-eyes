@@ -106,12 +106,24 @@ if (-not (Get-NetFirewallRule -DisplayName 'VA Eyes - server discovery' -ErrorAc
 # ---------- 3. Docker ----------
 Step '3/5 Database + video server (Docker)'
 function Test-Docker {
-    $ErrorActionPreference = 'Continue'  # docker's error text must not stop the script
-    docker info *> $null
-    return ($LASTEXITCODE -eq 0)
+    # A frozen Docker (common after many sleep/wake cycles) never answers: give up after 15 s.
+    $job = Start-Job { docker info --format '{{.ServerVersion}}' 2>$null }
+    $answered = Wait-Job $job -Timeout 15
+    $version = if ($answered) { Receive-Job $job } else { $null }
+    Remove-Job $job -Force
+    return [bool]$version
 }
 if (-not (Test-Docker)) {
-    Say 'Docker Desktop is not running: starting it (about 1 minute)...'
+    if (Get-Process 'Docker Desktop' -ErrorAction SilentlyContinue) {
+        Say 'Docker Desktop is frozen: restarting it (about 1 minute, your data is kept)...' 'Yellow'
+        Get-Process docker, docker-compose, 'Docker Desktop', 'com.docker.*' -ErrorAction SilentlyContinue |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+        wsl --shutdown
+        Start-Sleep -Seconds 3
+    } else {
+        Say 'Docker Desktop is not running: starting it (about 1 minute)...'
+    }
     Start-Process 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
     $deadline = (Get-Date).AddSeconds(180)
     while (-not (Test-Docker) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 3 }
